@@ -1,4 +1,5 @@
 import Input from '../common/Input';
+import CityAutocomplete from '../common/CityAutocomplete';
 import { computeNumberOfDays, todayIsoDate } from '../../utils/dateUtils';
 import { pluralize } from '../../utils/formatters';
 
@@ -21,21 +22,21 @@ export default function TripBasicInfo({ values, onChange, errors = {} }) {
         required
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
+        <CityAutocomplete
           label="From"
           name="origin"
-          placeholder="Bengaluru"
+          placeholder="Bangalore"
           value={values.origin}
-          onChange={(e) => set('origin', e.target.value)}
+          onChange={(v) => set('origin', v)}
           error={errors.origin}
           required
         />
-        <Input
+        <CityAutocomplete
           label="Destination"
           name="destination"
           placeholder="Goa"
           value={values.destination}
-          onChange={(e) => set('destination', e.target.value)}
+          onChange={(v) => set('destination', v)}
           error={errors.destination}
           required
         />

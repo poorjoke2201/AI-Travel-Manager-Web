@@ -21,9 +21,9 @@ poi_id,name,city,state,zone,latitude,longitude,category,poi_type,entry_fee_inr,v
 20,Sanjay Gandhi National Park,Mumbai,Maharastra,Western,,,,National Park,50.0,2.0,4.3,,Monday,,Yes,All,Wildlife,1996,,"national park in Mumbai, India",,,outdoor,,India,national park,Q648907,2026-09-07
 21,Siddhivinayak Temple,Mumbai,Maharastra,Western,19.01699,72.8303997,Religious & Spiritual Pilgrimages,Temple,0.0,1.0,4.8,,,,No,All,Religious,1881,,"Hindu temple in Prabhadevi, Mumbai, Maharashtra, India",,,,,India,,Q13115097,2026-09-07
 22,Mahalaxmi Temple,Mumbai,Maharastra,Western,18.9773,72.8066,Religious & Spiritual Pilgrimages,Temple,0.0,1.0,4.7,,,,No,All,Religious,1831,,"Mahalakshmi Temple or Mahalaxmi Temple may refer to these Hindu temples in Maharashtra, India dedicated to the goddess Mahalakshmi:Mahalakshmi Temple, Kolhapur considered a Shakti Peeth
-Mahalakshmi Temple, Mumbai, a prominent Mumbai landmark
-Mahalakshmi Temple, Dahanu, a temple at Dahanu
-Mahalakshmi Temple, Hedavde, Vasai Virar",,,,,India,,NOT_FOUND,2026-09-07
+Mahalakshmi Temple, Mumbai,A prominent Mumbai landmark
+Mahalakshmi Temple, Dahanu,A temple at Dahanu
+Mahalakshmi Temple, Hedavde,"Vasai Virar,,,,,India,,NOT_FOUND,2026-09-07"
 23,Haji Ali Dargah,Mumbai,Maharastra,Western,18.9828273,72.8088966,Religious & Spiritual Pilgrimages,Religious Shrine,0.0,,4.4,,,,No,All,Religious,1431,,Dargah and mosque in India,,,,,India,dargah,Q542756,2026-09-07
 24,Chowpatty Beach,Mumbai,Maharastra,Western,18.9518622,72.8165592,Natural Landscapes & Wildlife,Beach,0.0,4.0,4.3,,,,Yes,Evening,Recreational,Unknown,,"Girgaon Chowpatty, is a public beach at the eastern end of the Queen’s Necklace adjoining Malabar Hill in the Girgaon area of Mumbai (Bombay), Maharashtra, India.",,,outdoor,,India,beach,Q26793807,2026-09-07
 25,Essel World,Mumbai,Maharastra,Western,19.230098,72.8013252,Adventure & Outdoor Activities,Amusement Park,1149.0,2.0,4.3,,,,Yes,All,Recreational,1986,,"EsselWorld was an amusement park located in Gorai on Dharavi island, Mumbai. It was operated by Pan India Pariyatan Ltd. It covered an area of 26 hectares along with its sister park Water Kingdom, a water park, and opened to the public in 1989. The park was one of the largest amusement parks in India. The park has been closed since April 2022.",,,,,India,,NOT_FOUND,2026-09-07
@@ -146,7 +146,7 @@ Mahalakshmi Temple, Hedavde, Vasai Virar",,,,,India,,NOT_FOUND,2026-09-07
 142,Dhuandhar Falls,Jabalpur,Madhya Pradesh,Central,23.1262738,79.8075411,Natural Landscapes & Wildlife,Waterfall,0.0,4.0,4.5,,,,Yes,Morning,Nature,Unknown,,Tourist site in India,,,,,India,,Q38177,2026-09-07
 143,Bee Falls,Pachmarhi,Madhya Pradesh,Central,,,,Waterfall,15.0,1.5,4.6,,,,Yes,Morning,Nature,Unknown,,,,,,,India,,NOT_FOUND,2026-09-07
 144,Kanha National Park,Kanha,Madhya Pradesh,Central,,,,Wildlife Sanctuary,100.0,4.0,4.5,,,,Yes,Morning,Wildlife,1955,,"Kanha Tiger Reserve, also known as Kanha–Kisli National Park, is one of the tiger reserves of India and the largest national park of the state of Madhya Pradesh. It covers an area of 940 km2 (360 sq mi) in the two districts Mandla and Balaghat.
-The park hosts Bengal tiger, Indian leopard, sloth bear, barasingha and dhole. It is also the first tiger reserve in India to officially introduce a mascot, Bhoorsingh the Barasingha.",,,,,India,,NOT_FOUND,2026-09-07
+The park hosts Bengal tiger, Indian leopard,Sloth bear, barasingha and dhole. It is also the first tiger reserve in India to officially introduce a mascot," Bhoorsingh the Barasingha.,,,,,India,,NOT_FOUND,2026-09-07"
 145,Bandhavgarh National Park,Bandhavgarh,Madhya Pradesh,Central,,,,National Park,50.0,2.0,4.5,,,,Yes,Morning,Wildlife,1968,,national park,,,outdoor,,India,national park,Q806310,2026-09-07
 146,Orchha Fort,Orchha,Madhya Pradesh,Central,,,,Fort,10.0,2.5,4.8,,,,Yes,Afternoon,Historical,1500,,"historical monument site in Orchha, Madhya Pradesh, India",,,outdoor,,India,fort,Q20873390,2026-09-07
 147,Jahaz Mahal,Mandu,Madhya Pradesh,Central,,,,Site,50.0,,3.9,,,,Yes,Afternoon,Historical,1500,,building in India,,,,,India,building,Q6123216,2026-09-07
@@ -156,7 +156,7 @@ The park hosts Bengal tiger, Indian leopard, sloth bear, barasingha and dhole. I
 151,The Ridge,Shimla,Himachal Pradesh,Northern,,,,Scenic Point,0.0,,4.7,,,,Yes,Morning,Recreational,Unknown,,"The Ridge may refer to:The Ridge, later Major Ridge, a Cherokee Indian leader
 The Ridge , a 2025 British and New Zealand serial",,,,,India,,NOT_FOUND,2026-09-07
 152,Solang Valley,Manali,Himachal Pradesh,Northern,32.316,77.157,Natural Landscapes & Wildlife,Valley,0.0,4.0,4.1,,,,Yes,Morning,Adventure,Unknown,,located 14 km northwest of the seaside resort of Manali (India),,,outdoor,,India,valley,Q12069422,2026-09-07
-153,Dalai Lama Temple,dalhousie,Himachal Pradesh,Northern,32.2315734,76.3237994,Religious & Spiritual Pilgrimages,Temple,0.0,1.0,4.7,,,,No,All,Religious,1959,,,,,,,India,,NOT_FOUND,2026-09-07
+153,Dalai Lama Temple,Dalhousie,Himachal Pradesh,Northern,32.2315734,76.3237994,Religious & Spiritual Pilgrimages,Temple,0.0,1.0,4.7,,,,No,All,Religious,1959,,,,,,,India,,NOT_FOUND,2026-09-07
 154,Khajjiar Lake,Dalhousie,Himachal Pradesh,Northern,32.546218,76.0580811,Natural Landscapes & Wildlife,Lake,0.0,4.0,4.5,,,,Yes,Morning,Nature,Unknown,,lake in India,,,outdoor,,India,lake,Q6399145,2026-09-07
 155,Key Monastery,Spiti Valley,Himachal Pradesh,Northern,,,,Monastery,0.0,,4.8,,,,Yes,Morning,Religious,1100,,"Buddhist monastery in Spiti, Himachal Pradesh, India",,,,,India,tibetan buddhist monastery,Q1341262,2026-09-07
 156,Great Himalayan National Park,Kullu,Himachal Pradesh,Northern,31.7985414,77.5160134,Natural Landscapes & Wildlife,National Park,50.0,4.0,4.5,,,,Yes,All,Wildlife,1984,,national park in India,,,,,India,,Q1544213,2026-09-07
@@ -290,9 +290,9 @@ The Ridge , a 2025 British and New Zealand serial",,,,,India,,NOT_FOUND,2026-09-
 284,Unakoti Rock Carvings,Unakoti,Tripura,North Eastern,,,,Rock Carvings,20.0,,4.5,,,,Yes,Morning,Historical,700,,,,,,,India,,NOT_FOUND,2026-09-07
 285,Chitrakote Falls,Bastar,Chhattisgarh,Central,19.2071733,81.7000604,Natural Landscapes & Wildlife,Waterfall,0.0,4.0,4.6,,,,Yes,Morning,Nature,Unknown,,"The Chitrakote Falls is a natural waterfall on the Indravati River, located approximately 38 kilometres (24 mi) to the west of Jagdalpur, in Bastar district in the Indian state of Chhattisgarh.",,,,,India,,NOT_FOUND,2026-09-07
 286,DzÃÂ¼kou Valley,DzÃÂ¼kou Valley,Nagaland,North Eastern,,,,Valley,0.0,,4.7,,,,Yes,Afternoon,Trekking,Unknown,,,,,,,India,,NOT_FOUND,2026-09-07
-287,Promenade Beach,Puducherry,Puducherry,Southern,11.9312773,79.8358019,Natural Landscapes & Wildlife,Beach,0.0,4.0,4.5,,,,Yes,Morning,Recreational,Unknown,,human settlement in India,,,outdoor,,India,beach,Q16898816,2026-09-07
+287,Promenade Beach,Pondicherry,Puducherry,Southern,11.9312773,79.8358019,Natural Landscapes & Wildlife,Beach,0.0,4.0,4.5,,,,Yes,Morning,Recreational,Unknown,,human settlement in India,,,outdoor,,India,beach,Q16898816,2026-09-07
 288,Auroville,Auroville,Puducherry,Southern,,,,Township,0.0,,4.1,,,,Yes,All,Cultural,1968,,experimental universal township in South India,,,,,India,city|intentional community,Q590361,2026-09-07
-289,Paradise Beach,Puducherry,Puducherry,Southern,,,,Beach,200.0,3.0,4.5,,,,Yes,Morning,Recreational,Unknown,,album by Miki Matsubara,,,,,India,album,Q11239363,2026-09-07
+289,Paradise Beach,Pondicherry,Puducherry,Southern,,,,Beach,200.0,3.0,4.5,,,,Yes,Morning,Recreational,Unknown,,album by Miki Matsubara,,,,,India,album,Q11239363,2026-09-07
 290,Cellular Jail,Port Blair,Andaman and Nicobar Islands,Southern,,,,Landmark,30.0,,4.7,,Monday,,Yes,Afternoon,Historical,1906,,colonial prison in India,,,indoor,,India,defunct prison|prison museum,Q3345501,2026-09-07
 291,Radhanagar Beach,Havelock Island,Andaman and Nicobar Islands,Southern,11.9844552,92.9508454,Natural Landscapes & Wildlife,Beach,0.0,4.0,4.8,,,,Yes,Morning,Nature,Unknown,,"beach on Havelock Island, India",,,outdoor,,India,beach,Q132189910,2026-09-07
 292,Bharatpur Beach,Neil Island,Andaman and Nicobar Islands,Southern,11.8358457,93.0451011,Natural Landscapes & Wildlife,Beach,0.0,4.0,4.5,,,,Yes,Morning,Nature,Unknown,,,,,,,India,,NOT_FOUND,2026-09-07
@@ -305,27 +305,27 @@ The Ridge , a 2025 British and New Zealand serial",,,,,India,,NOT_FOUND,2026-09-
 299,Sanjay Gandhi Biological Park,Patna,Bihar,Eastern,25.5997345,85.0971767,Natural Landscapes & Wildlife,Zoo,30.0,4.0,4.3,,,,Yes,All,Wildlife,Unknown,,"zoo in Bihar, India",,,,,India,zoo,Q7418426,2026-09-07
 300,Takhat Shri Harimandir Ji Patna Sahib,Patna,Bihar,Eastern,25.5960503,85.2299561,Religious & Spiritual Pilgrimages,Gurudwara,0.0,,4.7,,,,Yes,All,Religious,Unknown,,,,,,,India,,NOT_FOUND,2026-09-07
 301,Budhha Smriti Park,Patna,Bihar,Eastern,25.6067139,85.1361502,Sightseeing & Exploration,Park,10.0,2.0,4.4,,,,Yes,All,Cultural,Unknown,,,,,,,India,,NOT_FOUND,2026-09-07
-302,Kingdom of Dreams,Gurugram,Haryana,Northern,28.4678664,77.0688866,Adventure & Outdoor Activities,Entertainment,1100.0,,4.4,,Monday,,Yes,Afternoon,Entertainment,2010,,Live entertainment destination at Gurugram,,,,,India,venue,Q6412565,2026-09-07
-303,Ambience Mall,Gurugram,Haryana,Northern,28.505504,77.095956,Shopping & Markets,Mall,0.0,1.5,4.6,,,,Yes,Afternoon,Shopping,Unknown,,building in India,,,,,India,,Q28153963,2026-09-07
-304,DLF CyberHub,Gurugram,Haryana,Northern,,,,Commercial Complex,0.0,,4.7,,,,Yes,Afternoon,Entertainment,Unknown,,,,,,,India,,NOT_FOUND,2026-09-07
-305,Gurudwara Bangla Sahib,New Delhi,Delhi,Northern,,,,Gurudwara,0.0,,4.8,,,,Yes,All,Religious,Unknown,,"gurdwara in Delhi, India",,,,,India,gurdwara,Q2375435,2026-09-07
+302,Kingdom of Dreams,Gurgaon,Haryana,Northern,28.4678664,77.0688866,Adventure & Outdoor Activities,Entertainment,1100.0,,4.4,,Monday,,Yes,Afternoon,Entertainment,2010,,Live entertainment destination at Gurugram,,,,,India,venue,Q6412565,2026-09-07
+303,Ambience Mall,Gurgaon,Haryana,Northern,28.505504,77.095956,Shopping & Markets,Mall,0.0,1.5,4.6,,,,Yes,Afternoon,Shopping,Unknown,,building in India,,,,,India,,Q28153963,2026-09-07
+304,DLF CyberHub,Gurgaon,Haryana,Northern,,,,Commercial Complex,0.0,,4.7,,,,Yes,Afternoon,Entertainment,Unknown,,,,,,,India,,NOT_FOUND,2026-09-07
+305,Gurudwara Bangla Sahib,Delhi,Delhi,Northern,,,,Gurudwara,0.0,,4.8,,,,Yes,All,Religious,Unknown,,"gurdwara in Delhi, India",,,,,India,gurdwara,Q2375435,2026-09-07
 306,Kedarnath,Kedarnath,Uttarakhand,Northern,30.7346267,79.0668943,Religious & Spiritual Pilgrimages,Temple,0.0,1.0,4.8,,,,No,All,Religious,Unknown,,male given name,,,,,India,male given name,Q21079792,2026-09-07
 307,DLF Mall of India,Noida,Uttar Pradesh,Central,28.5673409,77.3211303,Shopping & Markets,Mall,0.0,1.5,4.6,,,,Yes,All,Shopping,2016,,"The DLF Mall of India is a shopping mall situated in Sector 18, Noida, Uttar Pradesh, India within Delhi NCR. The mall is spread over 7 floors, and includes 330 brands, 80 kiosks, 5 customized shopping zones, along with 75 food and beverages options and a movie theatre with 7 screens. Developed by DLF Limited, the mall was expected to be operational by December 2014, but it eventually opened for public in February 2016.",,,,,India,,NOT_FOUND,2026-09-07
 308,The Grand Venice Mall,Greater Noida,Uttar Pradesh,Central,,,,Mall,0.0,,4.2,,,,Yes,All,Shopping,Unknown,,"shopping mall in Uttar Pradesh, India",,,,,India,shopping center,Q60785276,2026-09-07
-309,Wonderla Amusement Park,Bengaluru,Karnataka,Southern,,,,Amusement Park,890.0,2.0,4.5,,,,Yes,All,Entertainment,2005,,,,,,,India,,NOT_FOUND,2026-09-07
+309,Wonderla Amusement Park,Bangalore,Karnataka,Southern,,,,Amusement Park,890.0,2.0,4.5,,,,Yes,All,Entertainment,2005,,,,,,,India,,NOT_FOUND,2026-09-07
 310,Nandankanan Zoological Park,Bhubaneswar,Odisha,Eastern,,,,Zoo,50.0,3.0,4.4,,Monday,,Yes,Afternoon,Wildlife,1960,,"zoo and botanical garden in Bhubaneswar, Odisha, India",,,,,India,zoo,Q2275145,2026-09-07
-311,Orion Mall,Bengaluru,Karnataka,Southern,,,,Mall,0.0,,4.5,,,,Yes,All,Shopping,2012,,"Shopping mall chain in Bangalore, Karnataka, India",,,,,India,shopping center,Q17081306,2026-09-07
+311,Orion Mall,Bangalore,Karnataka,Southern,,,,Mall,0.0,,4.5,,,,Yes,All,Shopping,2012,,"Shopping mall chain in Bangalore, Karnataka, India",,,,,India,shopping center,Q17081306,2026-09-07
 312,Inorbit Mall Cyberabad,Hyderabad,Telangana,Southern,,,,Mall,0.0,,4.5,,,,Yes,All,Shopping,2004,,,,,,,India,,NOT_FOUND,2026-09-07
-313,Jama Masjid,New Delhi,Delhi,Northern,,,,Mosque,0.0,1.0,4.5,,,,Yes,All,Historical,1656,,main mosque of a city or state,,,,,India,type of building,Q1454820,2026-09-07
+313,Jama Masjid,Delhi,Delhi,Northern,,,,Mosque,0.0,1.0,4.5,,,,Yes,All,Historical,1656,,main mosque of a city or state,,,,,India,type of building,Q1454820,2026-09-07
 314,Buddh International Circuit,Greater Noida,Uttar Pradesh,Central,,,,Race Track,1500.0,,4.6,,Sunday,,Yes,All,Sports,2011,,motorsport track in India,,,,,India,motorsport racing track,Q172906,2026-09-07
 315,Phoenix Palassio,Lucknow,Uttar Pradesh,Central,,,,Mall,0.0,,4.6,,,,Yes,All,Shopping,2020,,,,,,,India,,NOT_FOUND,2026-09-07
 316,LuLu International Shopping Mall,Kochi,Kerala,Southern,10.0578407,77.0660813,Shopping & Markets,Mall,0.0,1.5,4.6,,,,Yes,All,Shopping,2013,,"Lulu Mall may refer to:Lulu Mall, Kochi, located in Kochi, Kerala, India
-Lulu Mall, Thiruvananthapuram, located in Thiruvananthapuram, Kerala, India
-Lulu Mall, Palakkad, located in Palakkad, Kerala, India
-Lulu Mall, Kozhikode, located in Kozhikode, Kerala, India
-Lulu Mall, Lucknow, located in Lucknow, Uttar Pradesh, India
-Lulu Mall, Hyderabad, located in Hyderabad, Telangana, India",,,,,India,,NOT_FOUND,2026-09-07
-317,Rail Museum,New Delhi,Delhi,Northern,,,,Museum,50.0,2.0,4.4,,Monday,,Yes,Morning,Cultural,1977,,museum specializing in rail transport,,,indoor,,India,type of museum,Q18704634,2026-09-07
+Lulu Mall, Thiruvananthapuram,Located in Thiruvananthapuram, Kerala, India
+Lulu Mall, Palakkad,Located in Palakkad, Kerala, India
+Lulu Mall, Kozhikode,Located in Kozhikode, Kerala, India
+Lulu Mall, Lucknow,Located in Lucknow, Uttar Pradesh, India
+Lulu Mall, Hyderabad,Located in Hyderabad, Telangana," India,,,,,India,,NOT_FOUND,2026-09-07"
+317,Rail Museum,Delhi,Delhi,Northern,,,,Museum,50.0,2.0,4.4,,Monday,,Yes,Morning,Cultural,1977,,museum specializing in rail transport,,,indoor,,India,type of museum,Q18704634,2026-09-07
 318,Living Root Bridge,Cherrapunji,Meghalaya,North Eastern,25.4670308,91.366216,Natural Landscapes & Wildlife,Natural Feature,0.0,4.0,4.6,,,,Yes,Morning,Nature,Unknown,,Type of pedestrian bridge made with live tree roots,,,,,India,,Q18349989,2026-09-07
 319,Akshardham,Gandhinagar,Gujarat,Western,,,,Temple,0.0,1.0,4.6,,Monday,,No,All,Religious,1992,,"spiritual and cultural Mandir dedicated to devotion, learning and harmony",,,indoor,,India,temple,Q1849858,2026-09-07
 320,Agra Fort,Agra,Uttar Pradesh,Central,27.1795328,78.021112,Cultural & Heritage Sites,Fort,40.0,2.0,4.5,,,,Yes,Afternoon,Historical,1565,,UNESCO World Heritage Site,,,outdoor,,India,fort,Q171857,2026-09-07
@@ -366,9 +366,9 @@ Lulu Mall, Hyderabad, located in Hyderabad, Telangana, India",,,,,India,,NOT_FOU
 355,Gallery Gitanjali,Panjim,Goa,,12.9747587,77.6093926,"Arts, Science & Literature Attractions",,0.0,,4.5,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 356,Our Lady of Immaculate Conception Church,Panjim,Goa,,15.4986,73.8294,Religious & Spiritual Pilgrimages,,0.0,,4.4,,,,,,,,,"church building in Piranga, Brazil",,,indoor,"Praça Coronel Amantino, Piranga, MG, 36480-000",India,church building,Q141121312,2026-09-07
 357,Old Goa,Goa,Goa,,15.5014,73.9135,Cultural & Heritage Sites,,0.0,2.0,4.5,,,,,,,,,"ancient city in Ilhas district, Goa",,,,,India,ancient city|human settlement,Q553907,2026-09-07
-358,Statue of Unity,Ahemdabad,Gujrat,,10.1335031,76.6860267,Cultural & Heritage Sites,,120.0,2.0,4.6,,,,,,,,,"statue of Vallabhbhai Patel at the bank of Narmada river, Gujarat, India",,,,,India,statue|colossal statue,Q7604504,2026-09-07
-359,Jhulta Minara,Ahemdabad,Gujrat,,21.8380184,73.7190728,Cultural & Heritage Sites,,0.0,2.0,4.1,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
-360,Auto World Vintage Car Museum,Ahemdabad,Gujrat,,23.0236789,72.5998114,"Arts, Science & Literature Attractions",,100.0,,4.4,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
+358,Statue of Unity,Ahmedabad,Gujrat,,10.1335031,76.6860267,Cultural & Heritage Sites,,120.0,2.0,4.6,,,,,,,,,"statue of Vallabhbhai Patel at the bank of Narmada river, Gujarat, India",,,,,India,statue|colossal statue,Q7604504,2026-09-07
+359,Jhulta Minara,Ahmedabad,Gujrat,,21.8380184,73.7190728,Cultural & Heritage Sites,,0.0,2.0,4.1,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
+360,Auto World Vintage Car Museum,Ahmedabad,Gujrat,,23.0236789,72.5998114,"Arts, Science & Literature Attractions",,100.0,,4.4,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 361,Dwarka Beach & Lighthouse,Dwarka,Gujrat,,23.0358621,72.5701089,Natural Landscapes & Wildlife,,0.0,4.0,4.6,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 362,Rukmini Devi Mandir,Dwarka,Gujrat,,22.2441975,68.9684562,Religious & Spiritual Pilgrimages,,0.0,,4.6,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 363,Shri Nageshwar Jyotirling,Dwarka,Gujrat,,22.2573143,68.9644191,Religious & Spiritual Pilgrimages,,0.0,,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
@@ -441,12 +441,12 @@ Lulu Mall, Hyderabad, located in Hyderabad, Telangana, India",,,,,India,,NOT_FOU
 430,Chottanikara Bhagvathy Temple,Kochi,Kerala,,9.9771685,76.2773228,Religious & Spiritual Pilgrimages,,0.0,,5.0,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 431,Hill Palace Museum,Kochi,Kerala,,9.9331743,76.3905714,Cultural & Heritage Sites,,0.0,2.0,4.3,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 432,Cherai Beach,Kochi,Kerala,,9.952749,76.3638016,Natural Landscapes & Wildlife,,0.0,4.0,4.0,,,,,,,,,"Beach in Ernakulam district, Kerala, India",,,outdoor,,India,beach,Q10957902,2026-09-07
-433,Attukal Bhagwathy Temple,Thiruvanthapuram,Kerala,,9.9657787,76.2421147,Religious & Spiritual Pilgrimages,,0.0,,4.6,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
-434,Kovalam Beach,Thiruvanthapuram,Kerala,,8.4698623,76.9554858,Natural Landscapes & Wildlife,,0.0,4.0,4.4,,,,,,,,,branch post office in Thiruvananthapuram district,,,,,India,branch post office,Q71537662,2026-09-07
-435,Thiruvanthapuram Zoological park,Thiruvanthapuram,Kerala,,8.3837841,76.9804176,Natural Landscapes & Wildlife,,200.0,4.0,4.2,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
-436,Kanakakkunnu Palace,Thiruvanthapuram,Kerala,,8.5105939,76.9549377,Cultural & Heritage Sites,,0.0,2.0,4.5,,,,,,,,,"Palace in Thiruvananthapuram district, Keralam, India",,,outdoor,,India,heritage monument,Q2812739,2026-09-07
-437,Veli Lake Tourist Village,Thiruvanthapuram,Kerala,,8.5107183,76.9581858,Sightseeing & Exploration,,0.0,,4.2,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
-438,Napier Museum,Thiruvanthapuram,Kerala,,8.5080206,76.8886702,"Arts, Science & Literature Attractions",,70.0,,4.4,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
+433,Attukal Bhagwathy Temple,Thiruvananthapuram,Kerala,,9.9657787,76.2421147,Religious & Spiritual Pilgrimages,,0.0,,4.6,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
+434,Kovalam Beach,Thiruvananthapuram,Kerala,,8.4698623,76.9554858,Natural Landscapes & Wildlife,,0.0,4.0,4.4,,,,,,,,,branch post office in Thiruvananthapuram district,,,,,India,branch post office,Q71537662,2026-09-07
+435,Thiruvanthapuram Zoological park,Thiruvananthapuram,Kerala,,8.3837841,76.9804176,Natural Landscapes & Wildlife,,200.0,4.0,4.2,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
+436,Kanakakkunnu Palace,Thiruvananthapuram,Kerala,,8.5105939,76.9549377,Cultural & Heritage Sites,,0.0,2.0,4.5,,,,,,,,,"Palace in Thiruvananthapuram district, Keralam, India",,,outdoor,,India,heritage monument,Q2812739,2026-09-07
+437,Veli Lake Tourist Village,Thiruvananthapuram,Kerala,,8.5107183,76.9581858,Sightseeing & Exploration,,0.0,,4.2,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
+438,Napier Museum,Thiruvananthapuram,Kerala,,8.5080206,76.8886702,"Arts, Science & Literature Attractions",,70.0,,4.4,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 439,HiLITE mall,Kozhikode,Kerala,,8.4827779,76.9435906,Shopping & Markets,,0.0,1.5,4.2,,,,,,,,,building in India,,,,,India,shopping center,Q5761882,2026-09-07
 440,Mittayi Theravu -SM Street,Kozhikode,Kerala,,11.2486583,75.833473,Shopping & Markets,,0.0,1.5,4.5,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 441,Tali Maha Shiva Kshetram,Kozhikode,Kerala,,11.2507622,75.7815607,Religious & Spiritual Pilgrimages,,0.0,,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
@@ -511,7 +511,7 @@ Lulu Mall, Hyderabad, located in Hyderabad, Telangana, India",,,,,India,,NOT_FOU
 500,Water Sports in Alibaug,Alibaug,Maharashtra,,18.6583989,72.8773346,Adventure & Outdoor Activities,,0.0,,4.9,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 501,Kolaba Fort,Alibaug,Maharashtra,,18.6342019,72.8644532,Cultural & Heritage Sites,,20.0,2.0,4.2,,,,,,,,,building in India,,,outdoor,,India,sea fort,Q3824083,2026-09-07
 502,Jaigad Fort,Ratnagiri,Maharashtra,,17.300493,73.221612,Cultural & Heritage Sites,,0.0,2.0,4.1,,,,,,,,,"Jaigad Fort, Jayagaḍa killā) is a coastal fortification that is located at the tip of a peninsula in Jaigad, Ratnagiri District at a distance of 14 km from the temple town of Ganpatipule, in the state of Maharashtra, India. Nestled on a cliff, it overlooks a bay formed where the Shastri river enters the Arabian Sea.
-It has a commanding view of the bay, the nearby power plant and the open sea. A jetty port Angrey, and a lighthouse is located nearby. Although in ruins, most of the fort's outer wal",,,,,India,,NOT_FOUND,2026-09-07
+It has a commanding view of the bay, the nearby power plant and the open sea. A jetty port Angrey,And a lighthouse is located nearby. Although in ruins," most of the fort's outer wal,,,,,India,,NOT_FOUND,2026-09-07"
 503,Tilak Ali Museum,Ratnagiri,Maharahtra,,16.9952987,73.2904689,"Arts, Science & Literature Attractions",,0.0,,4.6,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 504,Umred Karhandla Wildlife Sanctuary,Nagpur,Maharashtra,,20.8286613,79.5932651,Natural Landscapes & Wildlife,,150.0,4.0,4.2,,,,,,,,,"wildlife sanctuary in Maharashtra, India",,,outdoor,,India,protected area|wildlife refuge,Q16902313,2026-09-07
 505,Tadoba Andhari Tiger Project,Nagpur,Maharashtra,,20.2717885,79.3875706,Natural Landscapes & Wildlife,,25.0,4.0,4.5,,,,,,,,,"tiger reserve and national park in Maharashtra, India",,,outdoor,,India,tiger reserve of india|national park|park,Q2639563,2026-09-07
@@ -523,7 +523,7 @@ It has a commanding view of the bay, the nearby power plant and the open sea. A 
 511,Chhatrapati Shahu Palace,Kolhapur,Maharastra,,16.7193627,74.231735,Cultural & Heritage Sites,,25.0,2.0,4.5,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 512,Dajipur Wildlife Sanctuary,Kolhapur,Maharastra,,16.3837902,73.8633999,Natural Landscapes & Wildlife,,50.0,4.0,4.4,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 513,Shri Ambabai Temple,Kolhapur,Maharastra,,16.416,74.135999,Religious & Spiritual Pilgrimages,,0.0,,4.8,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
-514,Della Adventure Park,Lonavla,Maharastra,,18.7814023,73.38906,Adventure & Outdoor Activities,,2000.0,,4.3,,,,,,,,,"amusement park in Maharashtra, India",,,outdoor,,India,amusement park,Q111913412,2026-09-07
+514,Della Adventure Park,Lonavala,Maharastra,,18.7814023,73.38906,Adventure & Outdoor Activities,,2000.0,,4.3,,,,,,,,,"amusement park in Maharashtra, India",,,outdoor,,India,amusement park,Q111913412,2026-09-07
 515,Imagicaa amusement park,Lonavala,Maharastra,,18.7679396,73.2823206,Adventure & Outdoor Activities,,1000.0,,4.4,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
 516,Lions Point ,Lonavala,Maharastra,,18.6999,73.3859,Sightseeing & Exploration,,0.0,,4.4,,,,,,,,,"park in Dodge County, Wisconsin, United States of America",,,outdoor,,India,park,Q49517877,2026-09-07
 517,Ekvira Devi Temple,Lonavala,Maharastra,,18.7832445,73.4702278,Religious & Spiritual Pilgrimages,,0.0,,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-07
@@ -1098,34 +1098,34 @@ Panna National Park was given the Award of Excellence in 2007 as the best mainta
 1085,Patna museum,Patna,Bihar,,25.612727,85.1332734,Cultural & Heritage Sites,,10.0,2.0,4.5,,,,,,,,,museum,,,indoor,,India,museum,Q1428044,2026-09-08
 1086,Buddha memorial park,Patna,Bihar,,25.9644427,85.2722472,Religious & Spiritual Pilgrimages,,0.0,,4.9,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
 1087,Srikrishna science centre,Patna,Bihar,,25.6164189,85.1411084,"Arts, Science & Literature Attractions",,0.0,,4.8,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1088,Shopping at HUDA marjet Sector 14,Gurugram,Haryana,,28.4710811,77.0454144,Shopping & Markets,,0.0,1.5,4.2,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1089,Shopping at Sadar bazaar Sector 12A,Gurugram,Haryana,,28.4652778,77.0269326,Shopping & Markets,,0.0,1.5,4.6,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1090,Wet N Wild water park,Gurugram,Haryana,,29.0587757,76.085601,Adventure & Outdoor Activities,,600.0,,4.2,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1091,Go-karting at Link road,Gurugram,Haryana,,29.0587757,76.085601,Adventure & Outdoor Activities,,0.0,,4.9,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1092,Ice skating at Ambience mall,Gurugram,Haryana,,28.505504,77.095956,Adventure & Outdoor Activities,,1000.0,,4.4,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1093,Camp tikkling,Gurugram,Haryana,,29.0587757,76.085601,Adventure & Outdoor Activities,,5000.0,,4.8,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1094,Aravalli biodiversity park,Gurugram,Haryana,,29.0587757,76.085601,Natural Landscapes & Wildlife,,0.0,4.0,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1095,Sultanpur Bird sanctuary,Gurugram,Haryana,,28.4681234,76.8917707,Natural Landscapes & Wildlife,,400.0,4.0,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1096,Museum of folk and tribal art,Gurugram,Haryana,,28.4709339,77.0099669,"Arts, Science & Literature Attractions",,20.0,,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1097,Indian Transport history,Gurugram,Haryana,,29.0587757,76.085601,"Arts, Science & Literature Attractions",,50.0,,4.0,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
-1098,Vintage camera museum,Gurugram,Haryana,,29.0587757,76.085601,"Arts, Science & Literature Attractions",,0.0,,4.0,,,,,,,,,Singaporean camera museum,,,indoor,,India,museum,Q107423819,2026-09-08
-1099,DLF CyberHub for shopping,Gurugram,Haryana,,28.4950422,77.0890948,Shopping & Markets,,0.0,1.5,4.0,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1088,Shopping at HUDA marjet Sector 14,Gurgaon,Haryana,,28.4710811,77.0454144,Shopping & Markets,,0.0,1.5,4.2,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1089,Shopping at Sadar bazaar Sector 12A,Gurgaon,Haryana,,28.4652778,77.0269326,Shopping & Markets,,0.0,1.5,4.6,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1090,Wet N Wild water park,Gurgaon,Haryana,,29.0587757,76.085601,Adventure & Outdoor Activities,,600.0,,4.2,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1091,Go-karting at Link road,Gurgaon,Haryana,,29.0587757,76.085601,Adventure & Outdoor Activities,,0.0,,4.9,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1092,Ice skating at Ambience mall,Gurgaon,Haryana,,28.505504,77.095956,Adventure & Outdoor Activities,,1000.0,,4.4,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1093,Camp tikkling,Gurgaon,Haryana,,29.0587757,76.085601,Adventure & Outdoor Activities,,5000.0,,4.8,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1094,Aravalli biodiversity park,Gurgaon,Haryana,,29.0587757,76.085601,Natural Landscapes & Wildlife,,0.0,4.0,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1095,Sultanpur Bird sanctuary,Gurgaon,Haryana,,28.4681234,76.8917707,Natural Landscapes & Wildlife,,400.0,4.0,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1096,Museum of folk and tribal art,Gurgaon,Haryana,,28.4709339,77.0099669,"Arts, Science & Literature Attractions",,20.0,,4.7,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1097,Indian Transport history,Gurgaon,Haryana,,29.0587757,76.085601,"Arts, Science & Literature Attractions",,50.0,,4.0,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
+1098,Vintage camera museum,Gurgaon,Haryana,,29.0587757,76.085601,"Arts, Science & Literature Attractions",,0.0,,4.0,,,,,,,,,Singaporean camera museum,,,indoor,,India,museum,Q107423819,2026-09-08
+1099,DLF CyberHub for shopping,Gurgaon,Haryana,,28.4950422,77.0890948,Shopping & Markets,,0.0,1.5,4.0,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
 1100,Adi Shankaracharya Samadhi,Kedarnath,Uttarakhand,,30.7361239,79.0663642,Religious & Spiritual Pilgrimages,,0.0,,4.8,,,,,,,,,,,,,,India,,NOT_FOUND,2026-09-08
 1101,Bhairavnath temple,Kedarnath,Uttarakhand,,30.066753,79.0192997,Religious & Spiritual Pilgrimages,,0.0,,4.6,,,,,,,,,,,,,,India,,,
 1102,Trekking to Vasuki Tal,Kedarnath,Uttarakhand,,30.9070387,79.1716516,"Adventure & Outdoor Activities, Sightseeing & Exploration",,0.0,,4.7,,,,,,,,,,,,,,India,,,
 1103,Sonprayag,Kedarnath,Uttarakhand,,30.6325757,78.9952754,"Adventure & Outdoor Activities, Sightseeing & Exploration",,0.0,,4.8,,,,,,,,,,,,,,India,,,
 1104,Chorabari lake,Kedarnath,Uttarakhand,,30.066753,79.0192997,"	Natural Landscapes & Wildlife, Sightseeing & Exploration",,0.0,,4.9,,,,,,,,,,,,,,India,,,
-1105,Auroville,Puducherry,Puducherry,,12.0052483,79.8068922,Cultural & Heritage Sites,,0.0,,4.1,,,,,,,,,,,,,,India,,,
-1106,Casablanca mall,Puducherry,Puducherry,,11.9415915,79.8083133,Shopping & Markets,,0.0,,4.2,,,,,,,,,,,,,,India,,,
-1107,Saram China market ,Puducherry,Puducherry,,11.9408006,79.8121041,Shopping & Markets,,0.0,,4.2,,,,,,,,,,,,,,India,,,
-1108,Pondicherry botanical garden,Puducherry,Puducherry,,11.9302138,79.8224206,Natural Landscapes & Wildlife,,0.0,,4.2,,,,,,,,,,,,,,India,,,
-1109,Pondicherry museum,Puducherry,Puducherry,,11.9344884,79.83485,"Arts, Science & Literature Attractions",,10.0,,4.4,,,,,,,,,,,,,,India,,,
-1110,Manakula Vinayagar temple,Puducherry,Puducherry,,11.9357756,79.8336621,Religious & Spiritual Pilgrimages,,0.0,,4.6,,,,,,,,,,,,,,India,,,
-1111,Chunnambar boat house,Puducherry,Puducherry,,11.8838125,79.8006875,"Adventure & Outdoor Activities, Sightseeing & Exploration",,0.0,,4.5,,,,,,,,,,,,,,India,,,
-1112,Heritage walk by White town,Puducherry,Puducherry,,11.9415915,79.8083133,Cultural & Heritage Sites,,0.0,,4.8,,,,,,,,,,,,,,India,,,
-1113,Sightseeing at Green Quarter,Puducherry,Puducherry,,11.9415915,79.8083133,Sightseeing & Exploration,,0.0,,4.7,,,,,,,,,,,,,,India,,,
-1114,Temple Adventures centre-Scuba diving,Puducherry,Puducherry,,11.9415915,79.8083133,Adventure & Outdoor Activities,,0.0,,3.9,,,,,,,,,,,,,,India,,,
-1115,Paradise beach and island,Puducherry,Puducherry,,11.9415915,79.8083133,"Natural Landscapes & Wildlife, Sightseeing & Exploration",,0.0,,4.4,,,,,,,,,,,,,,India,,,
+1105,Auroville,Pondicherry,Puducherry,,12.0052483,79.8068922,Cultural & Heritage Sites,,0.0,,4.1,,,,,,,,,,,,,,India,,,
+1106,Casablanca mall,Pondicherry,Puducherry,,11.9415915,79.8083133,Shopping & Markets,,0.0,,4.2,,,,,,,,,,,,,,India,,,
+1107,Saram China market ,Pondicherry,Puducherry,,11.9408006,79.8121041,Shopping & Markets,,0.0,,4.2,,,,,,,,,,,,,,India,,,
+1108,Pondicherry botanical garden,Pondicherry,Puducherry,,11.9302138,79.8224206,Natural Landscapes & Wildlife,,0.0,,4.2,,,,,,,,,,,,,,India,,,
+1109,Pondicherry museum,Pondicherry,Puducherry,,11.9344884,79.83485,"Arts, Science & Literature Attractions",,10.0,,4.4,,,,,,,,,,,,,,India,,,
+1110,Manakula Vinayagar temple,Pondicherry,Puducherry,,11.9357756,79.8336621,Religious & Spiritual Pilgrimages,,0.0,,4.6,,,,,,,,,,,,,,India,,,
+1111,Chunnambar boat house,Pondicherry,Puducherry,,11.8838125,79.8006875,"Adventure & Outdoor Activities, Sightseeing & Exploration",,0.0,,4.5,,,,,,,,,,,,,,India,,,
+1112,Heritage walk by White town,Pondicherry,Puducherry,,11.9415915,79.8083133,Cultural & Heritage Sites,,0.0,,4.8,,,,,,,,,,,,,,India,,,
+1113,Sightseeing at Green Quarter,Pondicherry,Puducherry,,11.9415915,79.8083133,Sightseeing & Exploration,,0.0,,4.7,,,,,,,,,,,,,,India,,,
+1114,Temple Adventures centre-Scuba diving,Pondicherry,Puducherry,,11.9415915,79.8083133,Adventure & Outdoor Activities,,0.0,,3.9,,,,,,,,,,,,,,India,,,
+1115,Paradise beach and island,Pondicherry,Puducherry,,11.9415915,79.8083133,"Natural Landscapes & Wildlife, Sightseeing & Exploration",,0.0,,4.4,,,,,,,,,,,,,,India,,,
 1116,Kala Pani Cellular Jail,Port Blair,Andaman and Nicobar Islands,,11.6747447,92.7478601,Cultural & Heritage Sites,,50.0,,4.5,,,,,,,,,,,,,,India,,,
 1117,Ross island,Port Blair,Andaman and Nicobar Islands,,11.6758295,92.7624249,"Natural Landscapes & Wildlife, Sightseeing & Exploration",,0.0,,4.0,,,,,,,,,,,,,,India,,,
 1118,Underwater Sea walk,Port Blair,Andaman and Nicobar Islands,,10.7448873,92.4999918,Adventure & Outdoor Activities,,1000.0,,4.0,,,,,,,,,,,,,,India,,,

@@ -194,6 +194,7 @@ async function importDataset(key) {
       columns: (headerRow) => headerRow.map(cleanHeader),
       skip_empty_lines: true,
       relax_column_count: true,
+      quote: false,
       trim: true,
     })
   );

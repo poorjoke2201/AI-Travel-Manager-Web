@@ -58,6 +58,7 @@ function mountIfPresent(basePath, modulePath) {
 }
 
 mountIfPresent('/api/auth', './routes/auth.routes');
+mountIfPresent('/api/cities', './routes/cities.routes');
 mountIfPresent('/api/trips', './routes/trip.routes');
 mountIfPresent('/api/explore', './routes/explore.routes');
 mountIfPresent('/api/public', './routes/publicTrip.routes');

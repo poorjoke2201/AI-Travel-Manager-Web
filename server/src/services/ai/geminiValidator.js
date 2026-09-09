@@ -59,7 +59,8 @@ function validateItinerary(rawJson, { trip, candidateIds }) {
     }
 
     day.activities.forEach((activity, actIdx) => {
-      if (activity.source === 'dataset') {
+      // hotel/travel/break activities are context-only and not strictly validated against candidateIds
+      if (activity.source === 'dataset' && !['hotel', 'travel', 'break'].includes(activity.type)) {
         const id = activity.datasetId != null ? String(activity.datasetId) : null;
         if (!id || !candidateIds.has(id)) {
           errors.push(

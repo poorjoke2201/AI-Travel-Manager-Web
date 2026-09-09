@@ -14,18 +14,21 @@ const COLORS = {
  * feel consistent with the rest of the UI (indigo=POI, marigold=hotel,
  * clay=restaurant, teal=searched destination).
  */
-export function createMarkerIcon(type = 'poi') {
+export function createMarkerIcon(type = 'poi', order = null) {
   const color = COLORS[type] || COLORS.poi;
+  const label = order != null ? String(order) : '';
   return L.divIcon({
     className: 'travel-manager-marker',
     html: `<span style="
-      display:block;width:16px;height:16px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      width:24px;height:24px;border-radius:50%;
       background:${color};border:2px solid white;
       box-shadow:0 1px 4px rgba(0,0,0,0.4);
-    "></span>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-    popupAnchor: [0, -8],
+      color:white;font-size:11px;font-weight:700;line-height:1;
+    ">${label}</span>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+    popupAnchor: [0, -12],
   });
 }
 

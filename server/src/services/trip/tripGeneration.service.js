@@ -2,7 +2,7 @@ const Trip = require('../../models/Trip');
 const ApiError = require('../../utils/apiError');
 const logger = require('../../utils/logger');
 
-const { geocodeAddress } = require('../maps/geocoding.service');
+const { geocodeAddress, cityFallbackCoords } = require('../maps/geocoding.service');
 const { getRoute } = require('../maps/routing.service');
 const { GOOGLE_MAPS_ROUTABLE_MODES } = require('../../constants/transport');
 
@@ -35,7 +35,8 @@ async function generateTrip(tripId, userId) {
 
   try {
     // 1. Geocode the destination (best-effort; itinerary/clustering still works without it).
-    const destinationCoords = await geocodeAddress(`${trip.destination}, India`);
+    const destinationCoords = await geocodeAddress(`${trip.destination}, India`)
+      || cityFallbackCoords(trip.destination);
     if (destinationCoords) {
       trip.destinationLocation = { lat: destinationCoords.lat, lng: destinationCoords.lng };
     }
@@ -48,7 +49,15 @@ async function generateTrip(tripId, userId) {
     ]);
 
     if (hotels.length) {
-      trip.recommendedHotel = { hotelId: hotels[0].source === 'dataset' ? hotels[0].id : null, label: 'Recommended accommodation' };
+      const h = hotels[0];
+      trip.recommendedHotel = {
+        hotelId: h.source === 'dataset' ? h.id : null,
+        label: 'Recommended accommodation',
+        name: h.name,
+        googleRating: h.googleRating ?? null,
+        pricePerNightInr: h.pricePerNightInr ?? null,
+        conditionLabel: h.conditionLabel ?? null,
+      };
     }
 
     // 5. Pre-trip generation (packing/weather/tips) - Gemini with deterministic fallback.
@@ -78,10 +87,10 @@ async function generatePreTripSection(trip) {
   const result = await generateValidatedJson(prompt, validatePreTrip);
 
   if (result.ok) {
-    return { ...result.data, generatedBy: 'gemini', isAiEstimate: true };
+    return { ...result.data, generatedBy: result.provider || 'gemini', isAiEstimate: true };
   }
 
-  logger.warn(`Pre-trip Gemini generation failed for trip ${trip._id}, using fallback`, result.errors);
+  logger.warn(`Pre-trip AI generation failed for trip ${trip._id}, using fallback`, result.errors);
   return {
     packingChecklist: {
       essentials: ['ID proof', 'Phone charger', 'Power bank', 'Basic medicines', 'Face masks'],
@@ -104,7 +113,7 @@ async function generateTransportSection(trip) {
   if (result.ok) {
     options = result.data.options.map((o) => ({ ...o, source: 'gemini' }));
   } else {
-    logger.warn(`Transport Gemini generation failed for trip ${trip._id}, using fallback`, result.errors);
+    logger.warn(`Transport AI generation failed for trip ${trip._id}, using fallback`, result.errors);
     options = [
       {
         mode: trip.transportPreference === 'any' ? 'car' : trip.transportPreference,
@@ -138,7 +147,9 @@ async function generateTransportSection(trip) {
 }
 
 async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
-  const candidateIds = new Set([...pois, ...restaurants].filter((c) => c.source === 'dataset').map((c) => c.id));
+  const candidateIds = new Set(
+    [...pois, ...hotels, ...restaurants].filter((c) => c.source === 'dataset').map((c) => c.id)
+  );
 
   const prompt = buildItineraryPrompt({
     trip: serializeTripForPrompt(trip),
@@ -148,29 +159,34 @@ async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
     weatherContext: trip.preTrip?.weatherAdvice || null,
   });
 
-  const result = await generateValidatedJson(prompt, (json) => validateItinerary(json, { trip, candidateIds }));
+  const result = await generateValidatedJson(prompt, (json) => validateItinerary(json, { trip, candidateIds }), { maxRetries: 0 });
 
   if (result.ok) {
-    return mapGeminiItineraryToTripDays(result.data, { pois, restaurants });
+    return mapGeminiItineraryToTripDays(result.data, { pois, restaurants, destination: trip.destination });
   }
 
-  logger.warn(`Itinerary Gemini generation failed for trip ${trip._id}, using deterministic fallback`, result.errors);
-  return buildDeterministicItinerary(trip, { pois, hotels, restaurants });
+  logger.warn(`Itinerary AI generation failed for trip ${trip._id}, using deterministic fallback`, result.errors);
+  const deterministicDays = buildDeterministicItinerary(trip, { pois, hotels, restaurants });
+  await geocodeMissingActivityCoords(deterministicDays, trip.destination);
+  return deterministicDays;
 }
 
 /** Converts Gemini's validated day/activity shape into the Trip model's day schema, resolving refIds and coordinates. */
-function mapGeminiItineraryToTripDays(itineraryData, { pois, restaurants }) {
+async function mapGeminiItineraryToTripDays(itineraryData, { pois, restaurants, destination }) {
   const poiById = new Map(pois.map((p) => [p.id, p]));
   const restaurantById = new Map(restaurants.map((r) => [r.id, r]));
 
-  return itineraryData.days.map((day) => ({
+  // Build days with whatever coords we already have from the dataset
+  const days = itineraryData.days.map((day) => ({
     day: day.day,
     date: day.date,
     summary: day.summary || null,
     weatherContext: day.weatherContext || null,
     activities: day.activities.map((activity) => {
       const dataset =
-        activity.type === 'poi' ? poiById.get(String(activity.datasetId)) : restaurantById.get(String(activity.datasetId));
+        activity.type === 'poi'
+          ? poiById.get(String(activity.datasetId))
+          : restaurantById.get(String(activity.datasetId));
 
       return {
         type: activity.type,
@@ -187,6 +203,32 @@ function mapGeminiItineraryToTripDays(itineraryData, { pois, restaurants }) {
       };
     }),
   }));
+
+  // Geocode any mappable activity that still has null coords
+  await geocodeMissingActivityCoords(days, destination);
+
+  return days;
+}
+
+/**
+ * For every poi/restaurant/hotel activity that has no coordinates yet,
+ * attempt to geocode "<name>, <destination>" via the geocoding chain
+ * (Google Maps → Geoapify → static city fallback). Mutates in place.
+ * Runs sequentially to stay within API rate limits.
+ */
+async function geocodeMissingActivityCoords(days, destination) {
+  const MAPPABLE = ['poi', 'restaurant', 'hotel'];
+  for (const day of days) {
+    for (const activity of day.activities) {
+      if (!MAPPABLE.includes(activity.type)) continue;
+      if (typeof activity.location.lat === 'number' && typeof activity.location.lng === 'number') continue;
+      // eslint-disable-next-line no-await-in-loop
+      const coords = await geocodeAddress(`${activity.name}, ${destination}, India`);
+      if (coords) {
+        activity.location = { lat: coords.lat, lng: coords.lng };
+      }
+    }
+  }
 }
 
 /** Plain-object view of the fields prompts/scoring actually need, decoupled from the Mongoose document. */

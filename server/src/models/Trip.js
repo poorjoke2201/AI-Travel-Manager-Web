@@ -38,7 +38,7 @@ const preTripSchema = new mongoose.Schema(
     },
     weatherAdvice: { type: String, default: null },
     travelTips: { type: [String], default: [] },
-    generatedBy: { type: String, enum: ['gemini', 'fallback'], default: null },
+    generatedBy: { type: String, enum: ['gemini', 'huggingface', 'fallback'], default: null },
     isAiEstimate: { type: Boolean, default: true },
   },
   { _id: false }
@@ -112,6 +112,10 @@ const tripSchema = new mongoose.Schema(
     recommendedHotel: {
       hotelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', default: null },
       label: { type: String, default: 'Recommended accommodation' },
+      name: { type: String, default: null },
+      googleRating: { type: Number, default: null },
+      pricePerNightInr: { type: Number, default: null },
+      conditionLabel: { type: String, default: null },
     },
 
     isPublic: { type: Boolean, default: false, index: true },

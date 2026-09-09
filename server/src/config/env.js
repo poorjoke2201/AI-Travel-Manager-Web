@@ -25,6 +25,10 @@ const env = {
   geminiModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
 
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+  geoapifyApiKey: process.env.GEOAPIFY_API_KEY || '',
+
+  huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY || '',
+  huggingfaceModel: process.env.HUGGINGFACE_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3',
 
   isProduction: (process.env.NODE_ENV || 'development') === 'production',
 };

@@ -2,6 +2,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { env } = require('../../config/env');
 const ApiError = require('../../utils/apiError');
 const logger = require('../../utils/logger');
+const { huggingfaceGenerateJson } = require('./huggingface.service');
 
 let client = null;
 function getClient() {
@@ -51,19 +52,20 @@ async function generateJson(prompt) {
 }
 
 /**
- * The core "never trust Gemini blindly" loop (spec section 27):
- * generate -> validate -> if invalid, retry once with the validation errors
- * appended to the prompt as corrective feedback -> if still invalid, give up
- * and let the caller apply its deterministic fallback (spec section 47).
+ * Tries Gemini first, then HuggingFace as fallback, then gives up.
+ * generate -> validate -> retry on validation failure (Gemini only) ->
+ * if still invalid or Gemini unavailable, try HuggingFace once ->
+ * if that also fails/invalid, return { ok: false }.
  *
  * @param {string} prompt
  * @param {(json: any) => {valid: boolean, errors: string[], data: any}} validatorFn
- * @returns {Promise<{ok: boolean, data: any|null, errors: string[]}>}
+ * @returns {Promise<{ok: boolean, data: any|null, errors: string[], provider: string}>}
  */
 async function generateValidatedJson(prompt, validatorFn, { maxRetries = 1 } = {}) {
   let lastErrors = [];
   let currentPrompt = prompt;
 
+  // --- Gemini attempts ---
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     let raw;
     try {
@@ -71,12 +73,12 @@ async function generateValidatedJson(prompt, validatorFn, { maxRetries = 1 } = {
       raw = await generateJson(currentPrompt);
     } catch (err) {
       lastErrors = [err.message];
-      break; // transport failure - retrying with the same broken connection rarely helps
+      break; // transport/quota failure - fall through to HuggingFace
     }
 
     const result = validatorFn(raw);
     if (result.valid) {
-      return { ok: true, data: result.data, errors: [] };
+      return { ok: true, data: result.data, errors: [], provider: 'gemini' };
     }
 
     lastErrors = result.errors;
@@ -87,7 +89,24 @@ async function generateValidatedJson(prompt, validatorFn, { maxRetries = 1 } = {
       .join('\n')}\nPlease correct these issues and return valid JSON only.`;
   }
 
-  return { ok: false, data: null, errors: lastErrors };
+  // --- HuggingFace fallback ---
+  logger.warn('Gemini unavailable or invalid - trying HuggingFace fallback');
+  try {
+    const hfRaw = await huggingfaceGenerateJson(prompt);
+    if (hfRaw) {
+      const hfResult = validatorFn(hfRaw);
+      if (hfResult.valid) {
+        logger.info('HuggingFace fallback succeeded');
+        return { ok: true, data: hfResult.data, errors: [], provider: 'huggingface' };
+      }
+      lastErrors = hfResult.errors;
+      logger.warn('HuggingFace response failed validation', hfResult.errors);
+    }
+  } catch (err) {
+    logger.warn('HuggingFace fallback threw', err.message);
+  }
+
+  return { ok: false, data: null, errors: lastErrors, provider: 'none' };
 }
 
 module.exports = { generateJson, generateValidatedJson };
