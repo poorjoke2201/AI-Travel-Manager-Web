@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-stone text-ink font-sans;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display text-ink;
+  }
+  /* Visible keyboard focus everywhere - never suppressed for aesthetics. */
+  :focus-visible {
+    outline: 2px solid theme('colors.indigo.DEFAULT');
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-xs bg-indigo px-5 py-2.5 font-sans font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xs border border-ink-300 px-5 py-2.5 font-sans font-semibold text-ink transition-colors hover:border-ink-500 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .card {
+    @apply rounded-card border border-stone-300 bg-white p-6;
+  }
+  .input-field {
+    @apply w-full rounded-xs border border-stone-300 bg-white px-4 py-2.5 text-ink placeholder:text-ink-300 focus:border-indigo;
+  }
+  .tag-chip {
+    @apply inline-flex items-center rounded-full border border-stone-300 px-3 py-1 text-sm transition-colors;
+  }
+  .tag-chip-active {
+    @apply border-indigo bg-indigo-100 text-indigo-700;
+  }
+}
+
+/* Leaflet's default marker icon assets don't bundle well through Vite - see
+   components/explore/*Marker.jsx and utils/mapUtils.js for the divIcon-based
+   workaround, which keeps map styling consistent with these design tokens. */
+.leaflet-container {
+  font-family: 'Manrope', system-ui, sans-serif;
+}
