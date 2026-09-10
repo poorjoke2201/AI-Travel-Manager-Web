@@ -73,11 +73,17 @@ export default function CreateTripPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <h1 className="mb-2 font-display text-3xl font-semibold">Create a trip</h1>
-      <p className="mb-8 text-ink-500">
-        Tell us about your trip and we'll put together pre-trip guidance, transport options, and a full itinerary.
-      </p>
+    <div className="mx-auto max-w-4xl">
+      <div className="mb-10 flex items-end justify-between gap-6 border-b border-stone-300 pb-7">
+        <div>
+          <p className="eyebrow">New journal page / 01</p>
+          <h1 className="mt-3 font-display text-4xl font-semibold sm:text-5xl">Where are we going?</h1>
+          <p className="mt-3 max-w-xl text-ink-500">
+            Tell us what sounds good. We&apos;ll shape the first draft of a journey around it.
+          </p>
+        </div>
+        <img src="/assets/illustrations/compass.svg" alt="" className="hidden h-20 w-20 opacity-70 sm:block" />
+      </div>
       <TripForm onSubmit={handleSubmit} isSubmitting={isDiscovering} submitError={error} />
     </div>
   );

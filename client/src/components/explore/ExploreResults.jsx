@@ -1,7 +1,7 @@
 import { formatInr, formatRating, toTitleCase } from '../../utils/formatters';
 import EmptyState from '../common/EmptyState';
 
-export default function ExploreResults({ activeType, results, onAddToTrip }) {
+export default function ExploreResults({ activeType, results, onAddToTrip, onPlanAround }) {
   const items = results[activeType === 'poi' ? 'pois' : `${activeType}s`] || [];
 
   if (!items.length) {
@@ -11,8 +11,9 @@ export default function ExploreResults({ activeType, results, onAddToTrip }) {
   return (
     <div className="max-h-[520px] space-y-3 overflow-y-auto pr-1">
       {items.map((item) => (
-        <div key={item._id} className="rounded-xs border border-stone-300 bg-white p-4">
-          <h4 className="font-semibold text-ink">{item.name}</h4>
+        <div key={item._id} className="journal-sheet relative p-4 transition-transform hover:-translate-y-0.5">
+          <span className="absolute right-3 top-3 font-display text-xs text-clay">PINNED</span>
+          <h4 className="pr-16 font-display text-lg font-semibold text-ink">{item.name}</h4>
           <p className="text-sm text-ink-500">
             {item.category || (item.cuisine || []).map(toTitleCase).join(', ') || item.city}
           </p>
@@ -23,7 +24,12 @@ export default function ExploreResults({ activeType, results, onAddToTrip }) {
           </div>
           {onAddToTrip && (
             <button type="button" className="mt-3 text-xs font-semibold text-indigo hover:underline" onClick={() => onAddToTrip(item, activeType)}>
-              Add to trip
+              Add to journal
+            </button>
+          )}
+          {onPlanAround && activeType === 'poi' && item._id && (
+            <button type="button" className="ml-3 mt-3 text-xs font-semibold text-teal hover:underline" onClick={() => onPlanAround(item)}>
+              Plan around it
             </button>
           )}
         </div>

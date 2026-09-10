@@ -1,5 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import TravelAssistant from '../components/assistant/TravelAssistant';
+import GlobalSearch from '../components/common/GlobalSearch';
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard' },
@@ -25,6 +27,7 @@ export default function DashboardLayout() {
           <Link to="/dashboard" className="font-display text-xl font-semibold text-ink">
             Travel Manager
           </Link>
+          <GlobalSearch />
           <nav className="flex items-center gap-6 text-sm font-medium text-ink-500">
             {NAV_ITEMS.map((item) => (
               <NavLink
@@ -47,6 +50,7 @@ export default function DashboardLayout() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         <Outlet />
       </main>
+      <TravelAssistant />
     </div>
   );
 }

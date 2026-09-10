@@ -116,6 +116,9 @@ function mapHotelRow(row) {
   if (sourceId === null) return null;
 
   const name = toCleanStringOrNull(row.name);
+  const latitude = toNumberOrNull(row.latitude);
+  const longitude = toNumberOrNull(row.longitude);
+  const location = toGeoPointOrNull(row.latitude, row.longitude);
 
   return {
     sourceId,
@@ -128,12 +131,19 @@ function mapHotelRow(row) {
     amenities: toArrayOrEmpty(row.amenities, ','),
     description: toCleanStringOrNull(row.description),
     source: toCleanStringOrNull(row.source),
+    latitude,
+    longitude,
+    ...(location ? { location } : {}),
   };
 }
 
 function mapRestaurantRow(row) {
   const sourceId = toNumberOrNull(row.restaurant_id);
   if (sourceId === null) return null;
+
+  const latitude = toNumberOrNull(row.latitude);
+  const longitude = toNumberOrNull(row.longitude);
+  const location = toGeoPointOrNull(row.latitude, row.longitude);
 
   return {
     sourceId,
@@ -146,6 +156,9 @@ function mapRestaurantRow(row) {
     avgPriceForTwo: toNumberOrNull(row.avg_price_for_two),
     avgDeliveryTimeMins: toNumberOrNull(row.avg_delivery_time),
     source: toCleanStringOrNull(row.source),
+    latitude,
+    longitude,
+    ...(location ? { location } : {}),
   };
 }
 
@@ -194,7 +207,6 @@ async function importDataset(key) {
       columns: (headerRow) => headerRow.map(cleanHeader),
       skip_empty_lines: true,
       relax_column_count: true,
-      quote: false,
       trim: true,
     })
   );

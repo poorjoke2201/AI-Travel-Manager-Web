@@ -2,10 +2,9 @@ const mongoose = require('mongoose');
 
 /**
  * Mirrors data/master_hotels.csv. NOTE: the dataset has no lat/lng.
- * `location` starts null and is populated lazily by
- * services/maps/geocoding.service.js only for the small candidate set
- * actually shortlisted for a trip (see section 32 of the spec) - never
- * geocode the whole collection.
+ * Coordinates can be imported from the geocoded CSVs or populated lazily by
+ * the runtime geocoding fallback. `location` is the GeoJSON representation
+ * used by the 2dsphere index.
  */
 const hotelSchema = new mongoose.Schema(
   {
@@ -24,6 +23,9 @@ const hotelSchema = new mongoose.Schema(
     website: { type: String, default: null },
     phone: { type: String, default: null },
     source: { type: String, default: null }, // booking | google | ...
+
+    latitude: { type: Number, default: null, min: -90, max: 90 },
+    longitude: { type: Number, default: null, min: -180, max: 180 },
 
     // Populated lazily via geocoding, not at import time.
     location: {

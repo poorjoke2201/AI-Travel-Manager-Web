@@ -2,7 +2,6 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { env } = require('../../config/env');
 const ApiError = require('../../utils/apiError');
 const logger = require('../../utils/logger');
-const { huggingfaceGenerateJson } = require('./huggingface.service');
 
 let client = null;
 function getClient() {
@@ -52,10 +51,8 @@ async function generateJson(prompt) {
 }
 
 /**
- * Tries Gemini first, then HuggingFace as fallback, then gives up.
- * generate -> validate -> retry on validation failure (Gemini only) ->
- * if still invalid or Gemini unavailable, try HuggingFace once ->
- * if that also fails/invalid, return { ok: false }.
+ * Tries Gemini and returns a structured failure when Gemini cannot produce a
+ * valid response. Callers provide deterministic fallbacks where appropriate.
  *
  * @param {string} prompt
  * @param {(json: any) => {valid: boolean, errors: string[], data: any}} validatorFn
@@ -73,7 +70,7 @@ async function generateValidatedJson(prompt, validatorFn, { maxRetries = 1 } = {
       raw = await generateJson(currentPrompt);
     } catch (err) {
       lastErrors = [err.message];
-      break; // transport/quota failure - fall through to HuggingFace
+      break;
     }
 
     const result = validatorFn(raw);
@@ -87,29 +84,6 @@ async function generateValidatedJson(prompt, validatorFn, { maxRetries = 1 } = {
     currentPrompt = `${prompt}\n\nYour previous response was invalid for these reasons:\n${result.errors
       .map((e) => `- ${e}`)
       .join('\n')}\nPlease correct these issues and return valid JSON only.`;
-  }
-
-  // --- HuggingFace fallback ---
-  logger.warn('Gemini unavailable or invalid - trying HuggingFace fallback');
-  let hfPrompt = prompt;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const hfRaw = await huggingfaceGenerateJson(hfPrompt);
-      if (!hfRaw) continue;
-      const hfResult = validatorFn(hfRaw);
-      if (hfResult.valid) {
-        logger.info('HuggingFace fallback succeeded');
-        return { ok: true, data: hfResult.data, errors: [], provider: 'huggingface' };
-      }
-      lastErrors = hfResult.errors;
-      logger.warn(`HuggingFace response failed validation (attempt ${attempt + 1}/2)`, hfResult.errors);
-      hfPrompt = `${prompt}\n\nYour previous response failed validation:\n${hfResult.errors
-        .map((error) => `- ${error}`)
-        .join('\n')}\nReturn corrected JSON only.`;
-    } catch (err) {
-      logger.warn('HuggingFace fallback threw', err.message);
-    }
   }
 
   return { ok: false, data: null, errors: lastErrors, provider: 'none' };

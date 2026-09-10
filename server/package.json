@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
-    "@huggingface/inference": "^4.13.28",
     "axios": "^1.7.9",
     "axios-retry": "^4.5.0",
     "bcryptjs": "^2.4.3",

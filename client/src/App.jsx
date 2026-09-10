@@ -56,6 +56,7 @@ export default function App() {
         <Route path="/trip/:id/pre-trip" element={<TripDetailsPage initialTab="pre-trip" />} />
         <Route path="/trip/:id/transport" element={<TripDetailsPage initialTab="transport" />} />
         <Route path="/trip/:id/itinerary" element={<TripDetailsPage initialTab="itinerary" />} />
+        <Route path="/trip/:id/budget" element={<TripDetailsPage initialTab="budget" />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
 

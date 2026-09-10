@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
  * scripts/importDatasets.js for batched streaming import, and
  * services/recommendation/candidate.service.js for the rule that this
  * collection must NEVER be fully loaded into memory or sent to Gemini
- * wholesale. Like hotels, coordinates are absent and geocoded lazily.
+ * wholesale. Coordinates can be imported from the geocoded CSV.
  */
 const restaurantSchema = new mongoose.Schema(
   {
@@ -26,6 +26,9 @@ const restaurantSchema = new mongoose.Schema(
     phone: { type: String, default: null },
 
     source: { type: String, default: null }, // swiggy | zomato | ...
+
+    latitude: { type: Number, default: null, min: -90, max: 90 },
+    longitude: { type: Number, default: null, min: -180, max: 180 },
 
     location: {
       type: { type: String, enum: ['Point'], default: undefined },

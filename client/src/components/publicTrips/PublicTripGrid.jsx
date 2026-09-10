@@ -8,8 +8,8 @@ export default function PublicTripGrid({ trips }) {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {trips.map((trip) => (
-        <PublicTripCard key={trip._id} trip={trip} />
+      {trips.map((trip, index) => (
+        <PublicTripCard key={trip._id} trip={trip} imageIndex={index} />
       ))}
     </div>
   );

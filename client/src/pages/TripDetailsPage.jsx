@@ -11,6 +11,7 @@ import Loader from '../components/common/Loader';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
+import BudgetSection from '../components/itinerary/BudgetSection';
 import { useTrip } from '../hooks/useTrips';
 
 export default function TripDetailsPage({ initialTab = 'overview' }) {
@@ -24,6 +25,15 @@ export default function TripDetailsPage({ initialTab = 'overview' }) {
   useEffect(() => {
     fetchTrip();
   }, [fetchTrip]);
+
+  useEffect(() => {
+    function handleAssistantUpdate(event) {
+      if (!event.detail?.tripId || event.detail.tripId === id) fetchTrip();
+    }
+
+    window.addEventListener('travel-assistant-trip-updated', handleAssistantUpdate);
+    return () => window.removeEventListener('travel-assistant-trip-updated', handleAssistantUpdate);
+  }, [fetchTrip, id]);
 
   async function handleRegenerate() {
     setIsRegenerating(true);
@@ -95,6 +105,7 @@ export default function TripDetailsPage({ initialTab = 'overview' }) {
       )}
 
       {activeTab === 'map' && <ItineraryMap days={trip.itinerary} />}
+      {activeTab === 'budget' && <BudgetSection tripId={id} />}
 
       <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete this trip?">
         <p className="mb-6 text-sm text-ink-500">

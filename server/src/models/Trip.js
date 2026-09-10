@@ -15,6 +15,8 @@ const activitySchema = new mongoose.Schema(
     phone: { type: String, default: null },
     imageUrl: { type: String, default: null },
     sourceRef: { type: String, default: null },
+    estimatedCostInr: { type: Number, default: null },
+    estimatedCostIsEstimate: { type: Boolean, default: true },
     location: {
       lat: { type: Number, default: null },
       lng: { type: Number, default: null },
@@ -44,7 +46,7 @@ const preTripSchema = new mongoose.Schema(
     },
     weatherAdvice: { type: String, default: null },
     travelTips: { type: [String], default: [] },
-    generatedBy: { type: String, enum: ['gemini', 'huggingface', 'fallback'], default: null },
+    generatedBy: { type: String, enum: ['gemini', 'fallback'], default: null },
     isAiEstimate: { type: Boolean, default: true },
   },
   { _id: false }
@@ -116,6 +118,15 @@ const tripSchema = new mongoose.Schema(
     dailyTravelToleranceKm: { type: Number, default: null },
     selectedHotelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', default: null },
     selectedTransportMode: { type: String, enum: ['flight', 'train', 'bus', 'car', 'bike', null], default: null },
+    selectedPlaces: {
+      type: [{
+        refId: { type: String, required: true },
+        type: { type: String, enum: ['poi', 'hotel', 'restaurant'], required: true },
+        name: { type: String, required: true },
+        source: { type: String, enum: ['dataset', 'geoapify', 'gemini'], default: 'dataset' },
+      }],
+      default: [],
+    },
 
     status: {
       type: String,

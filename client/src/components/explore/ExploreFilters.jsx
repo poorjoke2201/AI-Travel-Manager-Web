@@ -8,14 +8,15 @@ const TYPES = [
 
 export default function ExploreFilters({ activeType, onTypeChange, category, onCategoryChange, minRating, onMinRatingChange }) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3">
-      <div className="flex gap-2">
+    <div className="mb-5 flex flex-wrap items-center gap-3">
+      <span className="eyebrow mr-1">Map legend</span>
+      <div className="flex flex-wrap gap-2">
         {TYPES.map((t) => (
           <button
             key={t.value}
             type="button"
             onClick={() => onTypeChange(t.value)}
-            className={`tag-chip ${activeType === t.value ? 'tag-chip-active' : ''}`}
+            className={`tag-chip ${activeType === t.value ? 'tag-chip-active' : 'bg-stone-50'}`}
           >
             {t.label}
           </button>

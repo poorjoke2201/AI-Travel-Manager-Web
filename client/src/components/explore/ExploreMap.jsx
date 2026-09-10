@@ -21,7 +21,7 @@ export default function ExploreMap({ activeType, results, searchedCoordinates, o
     <MapContainer
       center={[INDIA_CENTER.lat, INDIA_CENTER.lng]}
       zoom={INDIA_DEFAULT_ZOOM}
-      style={{ height: '520px', borderRadius: '20px' }}
+      style={{ height: '520px', borderRadius: '6px' }}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

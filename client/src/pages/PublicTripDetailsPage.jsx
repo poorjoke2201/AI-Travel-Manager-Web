@@ -25,20 +25,24 @@ export default function PublicTripDetailsPage() {
   if (!trip) return <Loader label="Loading shared trip..." />;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <Link to="/public-trips" className="text-sm font-semibold text-indigo hover:underline">Back to public trips</Link>
-      <header className="mt-5 border-b border-stone-300 pb-6">
-        <p className="text-sm text-ink-500">Shared by {trip.userId?.username || 'a traveller'}</p>
-        <h1 className="mt-1 font-display text-3xl font-semibold text-ink">{trip.tripName}</h1>
-        <p className="mt-2 text-ink-500">{trip.origin} → {trip.destination}</p>
-        <div className="mt-4 flex flex-wrap gap-4 text-sm text-ink-500">
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      <Link to="/public-trips" className="text-sm font-semibold text-ocean-700 hover:underline">Back to the community wall</Link>
+      <header className="journal-sheet relative mt-5 overflow-hidden p-6 sm:p-10">
+        <img src="/assets/ephemera/tickets.webp" alt="" className="pointer-events-none absolute -right-8 -top-8 h-44 w-64 rotate-6 object-contain opacity-20" />
+        <div className="relative">
+          <p className="eyebrow">A shared page / postcard story</p>
+          <p className="mt-3 text-sm text-ink-500">Shared by {trip.userId?.username || 'a traveller'}</p>
+          <h1 className="mt-2 font-display text-4xl font-semibold text-ink sm:text-5xl">{trip.tripName}</h1>
+          <p className="mt-3 text-ocean-700">{trip.origin} to {trip.destination}</p>
+        </div>
+        <div className="relative mt-7 grid grid-cols-2 gap-4 border-t border-stone-200 pt-5 text-sm text-ink-500 sm:grid-cols-3">
           <span>{formatDateRange(trip.startDate, trip.endDate)}</span>
           <span>{pluralize(trip.numberOfDays, 'day')}</span>
           <span>{trip.budget ? formatInr(trip.budget) : 'No budget set'}</span>
         </div>
       </header>
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-8 space-y-6">
         {trip.itinerary?.length ? (
           <>
             <ItineraryMap days={trip.itinerary} />

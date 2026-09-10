@@ -32,9 +32,6 @@ const env = {
   geoapifyRoutePlannerApiKey: process.env.GEOAPIFY_ROUTE_PLANNER_API_KEY || '',
   geoapifyRouteMatrixApiKey: process.env.GEOAPIFY_ROUTE_MATRIX_API_KEY || '',
 
-  huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY || '',
-  huggingfaceModel: process.env.HUGGINGFACE_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3',
-
   isProduction: (process.env.NODE_ENV || 'development') === 'production',
 };
 

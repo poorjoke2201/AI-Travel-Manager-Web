@@ -5,17 +5,17 @@ export default {
     extend: {
       colors: {
         stone: {
-          DEFAULT: '#EEF0EA',
-          50: '#F7F8F4',
-          100: '#EEF0EA',
-          200: '#DEE2D6',
-          300: '#C5CBB9',
+          DEFAULT: '#F3EFE4',
+          50: '#FBF9F2',
+          100: '#F3EFE4',
+          200: '#E5DECE',
+          300: '#C9C0AD',
         },
         ink: {
-          DEFAULT: '#1E2430',
-          700: '#2A3242',
-          500: '#4B5568',
-          300: '#8891A0',
+          DEFAULT: '#24343A',
+          700: '#32464A',
+          500: '#566568',
+          300: '#8C9998',
         },
         indigo: {
           DEFAULT: '#2B3A67',
@@ -24,9 +24,9 @@ export default {
           100: '#E4E8F2',
         },
         marigold: {
-          DEFAULT: '#E8A33D',
-          600: '#D6912E',
-          100: '#FBEBD2',
+          DEFAULT: '#C78B46',
+          600: '#A96E31',
+          100: '#F3E4C9',
         },
         clay: {
           DEFAULT: '#C1502E',
@@ -34,21 +34,32 @@ export default {
           100: '#F6DED4',
         },
         teal: {
-          DEFAULT: '#3D8577',
-          600: '#2F6B60',
-          100: '#DCEDE9',
+          DEFAULT: '#3E766A',
+          600: '#2D5E55',
+          100: '#DCEBE3',
+        },
+        ocean: {
+          DEFAULT: '#2F6673',
+          700: '#24515D',
+          100: '#DDECEF',
+        },
+        ochre: {
+          DEFAULT: '#C78B46',
+          100: '#F3E4C9',
         },
       },
       fontFamily: {
         display: ['Fraunces', 'Georgia', 'serif'],
+        editorial: ['Cormorant Garamond', 'Georgia', 'serif'],
         sans: ['Manrope', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         xs: '6px',
-        card: '20px',
+        card: '10px',
       },
       boxShadow: {
         elevated: '0 12px 32px -12px rgba(30, 36, 48, 0.28)',
+        paper: '0 8px 22px -16px rgba(36, 52, 58, 0.46)',
       },
     },
   },

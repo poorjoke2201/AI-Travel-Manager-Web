@@ -54,13 +54,13 @@ export default function TripForm({ onSubmit, isSubmitting, submitError }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Trip basics</h2>
+      <section className="journal-sheet relative p-6 sm:p-8">
+        <SectionHeading number="01" title="Trip basics" note="Give this journey a name and a starting point." />
         <TripBasicInfo values={values} onChange={setValues} errors={errors} />
       </section>
 
-      <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Interests</h2>
+      <section className="journal-sheet p-6 sm:p-8">
+        <SectionHeading number="02" title="What draws you in?" note="Choose the places, flavours, and details you want to follow." />
         <div className="space-y-6">
           <PlacePreferences
             values={values.placePreferences}
@@ -73,8 +73,8 @@ export default function TripForm({ onSubmit, isSubmitting, submitError }) {
         </div>
       </section>
 
-      <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Getting there and staying</h2>
+      <section className="journal-sheet p-6 sm:p-8">
+        <SectionHeading number="03" title="Getting there and staying" note="A little practical detail helps the route take shape." />
         <div className="space-y-6">
           <TransportPreferences
             value={values.transportPreference}
@@ -87,14 +87,15 @@ export default function TripForm({ onSubmit, isSubmitting, submitError }) {
         </div>
       </section>
 
-      <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Travellers and style</h2>
+      <section className="journal-sheet p-6 sm:p-8">
+        <SectionHeading number="04" title="Travellers and style" note="Set the pace for the days ahead." />
         <TravellerPreferences values={values} onChange={setValues} />
       </section>
 
-      <section className="card flex items-center justify-between">
+      <section className="journal-sheet flex items-center justify-between gap-5 p-6 sm:p-8">
         <div>
-          <h2 className="text-lg font-semibold">Make this trip public</h2>
+          <p className="eyebrow">Optional / shared page</p>
+          <h2 className="mt-1 text-lg font-semibold">Make this trip public</h2>
           <p className="text-sm text-ink-500">Public trips are visible to other travellers for inspiration.</p>
         </div>
         <button
@@ -102,7 +103,7 @@ export default function TripForm({ onSubmit, isSubmitting, submitError }) {
           role="switch"
           aria-checked={values.isPublic}
           onClick={() => setValues({ ...values, isPublic: !values.isPublic })}
-          className={`h-7 w-12 rounded-full transition-colors ${values.isPublic ? 'bg-indigo' : 'bg-stone-300'}`}
+          className={`h-7 w-12 rounded-full transition-colors ${values.isPublic ? 'bg-ocean' : 'bg-stone-300'}`}
         >
           <span
             className={`block h-5 w-5 translate-x-1 rounded-full bg-white transition-transform ${
@@ -118,5 +119,14 @@ export default function TripForm({ onSubmit, isSubmitting, submitError }) {
         Generate my trip
       </Button>
     </form>
+  );
+}
+
+function SectionHeading({ number, title, note }) {
+  return (
+    <div className="mb-6 flex gap-4 border-b border-stone-200 pb-4">
+      <span className="font-display text-2xl text-clay">{number}</span>
+      <div><h2 className="text-xl font-semibold">{title}</h2><p className="mt-1 text-sm text-ink-500">{note}</p></div>
+    </div>
   );
 }

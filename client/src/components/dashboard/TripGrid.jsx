@@ -20,8 +20,8 @@ export default function TripGrid({ trips, emptyTitle = 'No trips yet', emptyDesc
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {trips.map((trip) => (
-        <TripCard key={trip._id} trip={trip} />
+      {trips.map((trip, index) => (
+        <TripCard key={trip._id} trip={trip} imageIndex={index} />
       ))}
     </div>
   );

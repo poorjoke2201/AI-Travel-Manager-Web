@@ -63,6 +63,10 @@ mountIfPresent('/api/trips', './routes/trip.routes');
 mountIfPresent('/api/explore', './routes/explore.routes');
 mountIfPresent('/api/public', './routes/publicTrip.routes');
 mountIfPresent('/api/maps', './routes/maps.routes');
+mountIfPresent('/api/chat', './routes/chat.routes');
+mountIfPresent('/api', './routes/expense.routes');
+mountIfPresent('/api', './routes/planning.routes');
+mountIfPresent('/api/search', './routes/search.routes');
 
 app.use(notFound);
 app.use(errorHandler);

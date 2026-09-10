@@ -35,9 +35,15 @@ export default function PublicTripsPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="mb-2 font-display text-3xl font-semibold">Public trips</h1>
-      <p className="mb-6 text-ink-500">Trips other travellers have chosen to share for inspiration.</p>
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="relative mb-10 overflow-hidden border-b border-stone-300 pb-8">
+        <img src="/assets/ephemera/postcards.webp" alt="" className="pointer-events-none absolute -right-8 -top-16 h-64 w-80 rotate-6 object-contain opacity-20" />
+        <div className="relative">
+          <p className="eyebrow">The community wall / shared pages</p>
+          <h1 className="mt-3 font-display text-4xl font-semibold sm:text-5xl">Journeys worth passing on.</h1>
+          <p className="mt-3 max-w-xl text-ink-500">Browse trips other travellers have opened up for inspiration, shortcuts, and the occasional beautiful detour.</p>
+        </div>
+      </div>
 
       {error && <ErrorMessage message={error} onRetry={() => loadPage(0)} />}
       {isLoading && trips.length === 0 ? (
