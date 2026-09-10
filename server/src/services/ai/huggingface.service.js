@@ -34,37 +34,37 @@ function extractJson(text) {
  * returns parsed JSON, or null on any failure.
  * Used as fallback when Gemini is rate-limited or unavailable.
  */
-async function huggingfaceGenerateJson(prompt) {
+async function huggingfaceGenerateJson(prompt, { attempts = 2 } = {}) {
   const hf = getClient();
   if (!hf) return null;
 
-  try {
-    const response = await hf.chatCompletion({
-      model: env.huggingfaceModel,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are a travel-planning assistant. Always respond with valid JSON only. ' +
-            'No markdown, no prose, no code fences. Output only the JSON object requested.',
-        },
-        { role: 'user', content: prompt },
-      ],
-      max_tokens: 4096,
-      temperature: 0.3,
-    });
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const response = await hf.chatCompletion({
+        model: env.huggingfaceModel,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a travel-planning assistant. Always respond with valid JSON only. ' +
+              'No markdown, no prose, no code fences. Output only the JSON object requested.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 4096,
+        temperature: 0.2,
+      });
 
-    const text = response.choices?.[0]?.message?.content || '';
-    const parsed = extractJson(text);
-    if (!parsed) {
-      logger.warn('HuggingFace returned unparseable JSON', text.slice(0, 200));
-      return null;
+      const text = response.choices?.[0]?.message?.content || '';
+      const parsed = extractJson(text);
+      if (parsed) return parsed;
+      logger.warn(`HuggingFace returned unparseable JSON (attempt ${attempt}/${attempts})`, text.slice(0, 200));
+    } catch (err) {
+      logger.warn(`HuggingFace generateJson failed (attempt ${attempt}/${attempts})`, err.message);
     }
-    return parsed;
-  } catch (err) {
-    logger.warn('HuggingFace generateJson failed', err.message);
-    return null;
   }
+
+  return null;
 }
 
 module.exports = { huggingfaceGenerateJson };

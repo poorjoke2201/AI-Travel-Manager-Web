@@ -4,7 +4,7 @@ import { formatInr, pluralize } from '../../utils/formatters';
 export default function PublicTripCard({ trip }) {
   const owner = trip.userId; // populated { username, avatar } by publicTrip.controller.js
   return (
-    <Link to={`/trip/${trip._id}`} className="card block transition-shadow hover:shadow-elevated">
+    <Link to={`/public-trips/${trip._id}`} className="card block transition-shadow hover:shadow-elevated">
       <h3 className="mb-1 font-display text-lg font-semibold">{trip.tripName}</h3>
       <p className="mb-3 text-sm text-ink-500">
         {trip.origin} → {trip.destination}

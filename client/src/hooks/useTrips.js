@@ -61,5 +61,12 @@ export function useTrip(tripId) {
     removeTripFromCache(tripId);
   }, [tripId, removeTripFromCache]);
 
-  return { trip, isLoading, error, fetchTrip, regenerate, update, remove };
+  const replaceActivity = useCallback(async (day, activityIndex, strategy) => {
+    const data = await tripService.replaceItineraryActivity(tripId, day, activityIndex, strategy);
+    setTrip(data);
+    upsertTripInCache(data);
+    return data;
+  }, [tripId, upsertTripInCache]);
+
+  return { trip, isLoading, error, fetchTrip, regenerate, update, replaceActivity, remove };
 }

@@ -61,6 +61,9 @@ async function recommendRestaurants(trip) {
       avgPriceForTwo: r.avgPriceForTwo,
       latitude: coords ? coords.lat : r.location?.coordinates?.[1] ?? null,
       longitude: coords ? coords.lng : r.location?.coordinates?.[0] ?? null,
+      openingTime: r.openingTime,
+      closingTime: r.closingTime,
+      description: r.description || null,
       source: 'dataset',
     };
   });

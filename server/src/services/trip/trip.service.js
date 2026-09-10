@@ -1,5 +1,10 @@
 const Trip = require('../../models/Trip');
 const ApiError = require('../../utils/apiError');
+const { recommendPOIs } = require('./../recommendation/poiRecommendation.service');
+const { recommendRestaurants } = require('./../recommendation/restaurantRecommendation.service');
+const { recommendHotels } = require('./../recommendation/hotelRecommendation.service');
+const { haversineDistanceKm } = require('../../utils/haversine');
+const { planItineraryRoutes } = require('../itinerary/routePlanner.service');
 
 /** Computes numberOfDays from startDate/endDate so the two can never drift apart (spec section 8). */
 function computeNumberOfDays(startDate, endDate) {
@@ -54,6 +59,44 @@ async function deleteTrip(tripId, userId) {
   await trip.deleteOne();
 }
 
+async function replaceItineraryActivity(tripId, userId, dayNumber, activityIndex, strategy = 'nearby') {
+  const trip = await getTripById(tripId, userId);
+  const day = trip.itinerary.find((item) => item.day === Number(dayNumber));
+  const current = day?.activities?.[Number(activityIndex)];
+  if (!day || !current || !['poi', 'restaurant', 'hotel'].includes(current.type)) {
+    throw ApiError.badRequest('That itinerary activity cannot be replaced.');
+  }
+
+  const destinationCoords = trip.destinationLocation?.lat
+    ? trip.destinationLocation
+    : null;
+  const candidates = current.type === 'poi'
+    ? await recommendPOIs(trip, destinationCoords)
+    : current.type === 'restaurant'
+      ? await recommendRestaurants(trip)
+      : await recommendHotels(trip);
+  const currentPoint = current.location?.lat != null ? current.location : null;
+  const alternatives = candidates.filter((candidate) => candidate.name !== current.name);
+  alternatives.sort((a, b) => {
+    if (!currentPoint) return 0;
+    const distanceA = a.latitude == null ? Infinity : haversineDistanceKm(currentPoint, { lat: a.latitude, lng: a.longitude });
+    const distanceB = b.latitude == null ? Infinity : haversineDistanceKm(currentPoint, { lat: b.latitude, lng: b.longitude });
+    return strategy === 'farther' ? distanceB - distanceA : distanceA - distanceB;
+  });
+
+  const replacement = alternatives[0];
+  if (!replacement) throw ApiError.notFound('No similar place is available for replacement.');
+
+  current.name = replacement.name;
+  current.refId = replacement.source === 'dataset' ? replacement.id : null;
+  current.source = replacement.source || 'dataset';
+  current.location = { lat: replacement.latitude ?? null, lng: replacement.longitude ?? null };
+  current.notes = strategy === 'farther' ? 'Replaced with a farther alternative.' : 'Replaced with a nearby alternative.';
+  await planItineraryRoutes(trip.itinerary);
+  await trip.save();
+  return trip;
+}
+
 async function listPublicTrips({ limit = 20, skip = 0 } = {}) {
   return Trip.find({ isPublic: true })
     .sort({ createdAt: -1 })
@@ -82,5 +125,6 @@ module.exports = {
   getTripForViewing,
   updateTrip,
   deleteTrip,
+  replaceItineraryActivity,
   listPublicTrips,
 };

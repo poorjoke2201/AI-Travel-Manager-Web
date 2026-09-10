@@ -11,9 +11,11 @@ export default function TransportOptionCard({ option }) {
           <span aria-hidden="true">{MODE_ICON[option.mode] || '🧭'}</span>
           {toTitleCase(option.mode)}
         </span>
-        <span className="tag-chip !border-marigold-100 bg-marigold-100 text-marigold-600">
-          {option.source === 'google_maps' ? 'Google Maps distance' : 'AI estimate'}
-        </span>
+        {option.distanceKm != null && (
+          <span className="tag-chip !border-marigold-100 bg-marigold-100 text-marigold-600">
+            {Math.round(option.distanceKm)} km
+          </span>
+        )}
       </div>
       <p className="mb-3 text-sm text-ink-500">{option.summary}</p>
       <div className="flex gap-6 text-sm">

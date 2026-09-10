@@ -14,7 +14,7 @@ function RecenterOnSearch({ center, zoom }) {
   return null;
 }
 
-export default function ExploreMap({ activeType, results, searchedCoordinates }) {
+export default function ExploreMap({ activeType, results, searchedCoordinates, onAddToTrip }) {
   const items = results[activeType === 'poi' ? 'pois' : `${activeType}s`] || [];
 
   return (
@@ -35,9 +35,9 @@ export default function ExploreMap({ activeType, results, searchedCoordinates })
         </Marker>
       )}
 
-      {activeType === 'poi' && items.map((poi) => <POIMarker key={poi._id} poi={poi} />)}
-      {activeType === 'hotel' && items.map((hotel) => <HotelMarker key={hotel._id} hotel={hotel} />)}
-      {activeType === 'restaurant' && items.map((r) => <RestaurantMarker key={r._id} restaurant={r} />)}
+      {activeType === 'poi' && items.map((poi) => <POIMarker key={poi._id} poi={poi} onAddToTrip={onAddToTrip} />)}
+      {activeType === 'hotel' && items.map((hotel) => <HotelMarker key={hotel._id} hotel={hotel} onAddToTrip={onAddToTrip} />)}
+      {activeType === 'restaurant' && items.map((r) => <RestaurantMarker key={r._id} restaurant={r} onAddToTrip={onAddToTrip} />)}
     </MapContainer>
   );
 }

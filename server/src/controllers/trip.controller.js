@@ -1,5 +1,15 @@
 const tripService = require('../services/trip/trip.service');
 const { generateTrip } = require('../services/trip/tripGeneration.service');
+const { discoverTripOptions } = require('../services/trip/tripDiscovery.service');
+
+async function discoverOptions(req, res, next) {
+  try {
+    const options = await discoverTripOptions(req.body);
+    res.status(200).json({ success: true, data: options });
+  } catch (err) {
+    next(err);
+  }
+}
 
 /** POST /api/trips - creates a draft trip (basic info + preferences only, no AI yet). */
 async function createTrip(req, res, next) {
@@ -73,12 +83,29 @@ async function deleteTrip(req, res, next) {
   }
 }
 
+async function replaceItineraryActivity(req, res, next) {
+  try {
+    const trip = await tripService.replaceItineraryActivity(
+      req.params.id,
+      req.userId,
+      req.params.day,
+      req.params.activity,
+      req.body.strategy
+    );
+    res.status(200).json({ success: true, data: trip });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createTrip,
+  discoverOptions,
   createAndGenerateTrip,
   regenerateTrip,
   listTrips,
   getTrip,
   updateTrip,
   deleteTrip,
+  replaceItineraryActivity,
 };

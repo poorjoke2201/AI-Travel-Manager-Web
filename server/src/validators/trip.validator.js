@@ -28,6 +28,8 @@ const baseTripSchema = z.object({
   pace: z.enum(PACE_OPTIONS).default('balanced'),
   accommodationPreference: z.enum(ACCOMMODATION_PREFERENCES).default('any'),
   dailyTravelToleranceKm: z.number().positive().nullable().optional(),
+  selectedHotelId: z.string().regex(/^[a-f0-9]{24}$/i).nullable().optional(),
+  selectedTransportMode: z.enum(['flight', 'train', 'bus', 'car', 'bike']).nullable().optional(),
 
   isPublic: z.boolean().default(false),
 });
@@ -53,4 +55,9 @@ const tripIdParamSchema = z.object({
   id: z.string().regex(/^[a-f0-9]{24}$/i, 'Invalid trip id'),
 });
 
-module.exports = { createTripSchema, updateTripSchema, tripIdParamSchema };
+const replaceItineraryParamsSchema = tripIdParamSchema.extend({
+  day: z.string().regex(/^\d+$/, 'Invalid day number'),
+  activity: z.string().regex(/^\d+$/, 'Invalid activity index'),
+});
+
+module.exports = { createTripSchema, updateTripSchema, tripIdParamSchema, replaceItineraryParamsSchema };

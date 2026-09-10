@@ -34,3 +34,13 @@ export async function updateTrip(tripId, updates) {
 export async function deleteTrip(tripId) {
   await api.delete(`/trips/${tripId}`);
 }
+
+export async function replaceItineraryActivity(tripId, day, activityIndex, strategy) {
+  const { data } = await api.post(`/trips/${tripId}/itinerary/${day}/${activityIndex}/replace`, { strategy });
+  return data.data;
+}
+
+export async function discoverTripOptions(payload) {
+  const { data } = await api.post('/trips/discover', payload);
+  return data.data;
+}

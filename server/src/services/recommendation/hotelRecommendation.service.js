@@ -6,12 +6,16 @@ const logger = require('../../utils/logger');
 const TOP_N_RETURNED = 8;
 const GEOCODE_TOP_N = 3; // only the very best candidates get geocoded - see spec section 32
 
-const WEIGHTS = { rating: 0.5, budget: 0.5 };
+const WEIGHTS = { rating: 0.4, budget: 0.4, style: 0.2 };
 
-function scoreHotel(hotel, budgetCeiling) {
+function scoreHotel(hotel, budgetCeiling, travelStyle) {
   const rating = normalizeRating(hotel.googleRating);
   const budget = budgetScore(hotel.pricePerNightInr, budgetCeiling);
-  return weightedScore(WEIGHTS, { rating, budget });
+  const styleText = `${hotel.conditionLabel || ''} ${(hotel.amenities || []).join(' ')}`.toLowerCase();
+  const style = !travelStyle || travelStyle === 'moderate'
+    ? 0.5
+    : styleText.includes(travelStyle.toLowerCase()) ? 1 : 0.25;
+  return weightedScore(WEIGHTS, { rating, budget, style });
 }
 
 /**
@@ -26,7 +30,7 @@ async function recommendHotels(trip) {
   const rawCandidates = await getCandidateHotels(trip);
 
   const ranked = rawCandidates
-    .map((hotel) => ({ hotel, score: scoreHotel(hotel, budgetCeiling) }))
+    .map((hotel) => ({ hotel, score: scoreHotel(hotel, budgetCeiling, trip.travelStyle) }))
     .sort((a, b) => b.score - a.score)
     .map(({ hotel }) => hotel)
     .slice(0, TOP_N_RETURNED);

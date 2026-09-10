@@ -29,6 +29,9 @@ export default function TripCard({ trip }) {
         <span className="text-right">{pluralize(trip.numberOfDays, 'day')}</span>
         <span>{trip.budget ? formatInr(trip.budget) : 'No budget set'}</span>
         <span className="text-right">{toTitleCase(trip.transportPreference)}</span>
+        <span className="col-span-2 border-t border-stone-200 pt-2 text-xs text-ink-400">
+          Created {new Date(trip.createdAt).toLocaleDateString()}
+        </span>
       </div>
     </Link>
   );

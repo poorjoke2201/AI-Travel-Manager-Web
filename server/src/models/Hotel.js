@@ -21,6 +21,8 @@ const hotelSchema = new mongoose.Schema(
 
     amenities: { type: [String], default: [] },
     description: { type: String, default: null },
+    website: { type: String, default: null },
+    phone: { type: String, default: null },
     source: { type: String, default: null }, // booking | google | ...
 
     // Populated lazily via geocoding, not at import time.

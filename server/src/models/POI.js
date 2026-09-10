@@ -47,6 +47,10 @@ const poiSchema = new mongoose.Schema(
     establishmentYear: { type: String, default: null },
 
     description: { type: String, default: null },
+    website: { type: String, default: null },
+    phone: { type: String, default: null },
+    wikipedia: { type: String, default: null },
+    imageUrl: { type: String, default: null },
     source: { type: String, default: 'dataset' }, // dataset | gemini (fallback additions)
     sourceRef: { type: String, default: null }, // wikidata source_id etc.
     lastUpdated: { type: Date, default: null },

@@ -8,6 +8,7 @@
     "client": "npm run dev --prefix client",
     "import:data": "NODE_PATH=server/node_modules node scripts/importDatasets.js",
     "create:indexes": "NODE_PATH=server/node_modules node scripts/createIndexes.js",
+    "test": "node --test tests/backend/*.test.js",
     "setup:server": "npm install --prefix server",
     "setup:client": "npm install --prefix client",
     "setup": "npm run setup:server && npm run setup:client"

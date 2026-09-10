@@ -18,14 +18,19 @@ const env = {
 
   mongoUri: process.env.MONGO_URI || '',
 
-  jwtSecret: process.env.JWT_SECRET || 'dev-only-insecure-secret-change-me',
+  jwtSecret: process.env.JWT_SECRET || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
 
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
 
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
-  geoapifyApiKey: process.env.GEOAPIFY_API_KEY || '',
+  geoapifyPlacesApiKey: process.env.GEOAPIFY_PLACES_API_KEY || '',
+  geoapifyPlaceDetailsApiKey: process.env.GEOAPIFY_PLACE_DETAILS_API_KEY || '',
+  geoapifyGeocodingApiKey: process.env.GEOAPIFY_GEOCODING_API_KEY || '',
+  geoapifyRoutingApiKey: process.env.GEOAPIFY_ROUTING_API_KEY || '',
+  geoapifyRoutePlannerApiKey: process.env.GEOAPIFY_ROUTE_PLANNER_API_KEY || '',
+  geoapifyRouteMatrixApiKey: process.env.GEOAPIFY_ROUTE_MATRIX_API_KEY || '',
 
   huggingfaceApiKey: process.env.HUGGINGFACE_API_KEY || '',
   huggingfaceModel: process.env.HUGGINGFACE_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3',

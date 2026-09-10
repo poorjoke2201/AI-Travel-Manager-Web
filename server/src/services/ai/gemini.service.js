@@ -91,19 +91,25 @@ async function generateValidatedJson(prompt, validatorFn, { maxRetries = 1 } = {
 
   // --- HuggingFace fallback ---
   logger.warn('Gemini unavailable or invalid - trying HuggingFace fallback');
-  try {
-    const hfRaw = await huggingfaceGenerateJson(prompt);
-    if (hfRaw) {
+  let hfPrompt = prompt;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const hfRaw = await huggingfaceGenerateJson(hfPrompt);
+      if (!hfRaw) continue;
       const hfResult = validatorFn(hfRaw);
       if (hfResult.valid) {
         logger.info('HuggingFace fallback succeeded');
         return { ok: true, data: hfResult.data, errors: [], provider: 'huggingface' };
       }
       lastErrors = hfResult.errors;
-      logger.warn('HuggingFace response failed validation', hfResult.errors);
+      logger.warn(`HuggingFace response failed validation (attempt ${attempt + 1}/2)`, hfResult.errors);
+      hfPrompt = `${prompt}\n\nYour previous response failed validation:\n${hfResult.errors
+        .map((error) => `- ${error}`)
+        .join('\n')}\nReturn corrected JSON only.`;
+    } catch (err) {
+      logger.warn('HuggingFace fallback threw', err.message);
     }
-  } catch (err) {
-    logger.warn('HuggingFace fallback threw', err.message);
   }
 
   return { ok: false, data: null, errors: lastErrors, provider: 'none' };

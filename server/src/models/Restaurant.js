@@ -21,6 +21,9 @@ const restaurantSchema = new mongoose.Schema(
 
     avgPriceForTwo: { type: Number, default: null },
     avgDeliveryTimeMins: { type: Number, default: null },
+    description: { type: String, default: null },
+    website: { type: String, default: null },
+    phone: { type: String, default: null },
 
     source: { type: String, default: null }, // swiggy | zomato | ...
 

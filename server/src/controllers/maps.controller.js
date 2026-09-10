@@ -19,14 +19,17 @@ async function geocode(req, res, next) {
   }
 }
 
-/** POST /api/maps/route  body: { origin: {lat,lng}, destination: {lat,lng}, mode? } */
+/** POST /api/maps/route body: { origin, destination, waypoints?, mode? } */
 async function route(req, res, next) {
   try {
-    const { origin, destination, mode } = req.body;
-    if (!origin || !destination || typeof origin.lat !== 'number' || typeof destination.lat !== 'number') {
+    const { origin, destination, waypoints = [], mode } = req.body;
+    const validPoint = (point) => point
+      && typeof point.lat === 'number'
+      && typeof point.lng === 'number';
+    if (!validPoint(origin) || !validPoint(destination) || !waypoints.every(validPoint)) {
       throw ApiError.badRequest('Both origin and destination ({lat, lng}) are required.');
     }
-    const result = await getRoute(origin, destination, mode || 'driving');
+    const result = await getRoute(origin, destination, waypoints, mode || 'driving');
     if (!result) {
       return res.status(200).json({
         success: true,

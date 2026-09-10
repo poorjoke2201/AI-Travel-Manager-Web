@@ -2,13 +2,14 @@ import { Marker, Popup } from 'react-leaflet';
 import { createMarkerIcon } from '../../utils/mapUtils';
 import LocationPopup from './LocationPopup';
 
-export default function RestaurantMarker({ restaurant }) {
+export default function RestaurantMarker({ restaurant, onAddToTrip }) {
   const coords = restaurant.location?.coordinates; // GeoJSON: [lng, lat]
-  if (!coords) return null;
+  const position = coords?.length >= 2 ? [coords[1], coords[0]] : typeof restaurant.latitude === 'number' && typeof restaurant.longitude === 'number' ? [restaurant.latitude, restaurant.longitude] : null;
+  if (!position) return null;
   return (
-    <Marker position={[coords[1], coords[0]]} icon={createMarkerIcon('restaurant')}>
+    <Marker position={position} icon={createMarkerIcon('restaurant')}>
       <Popup>
-        <LocationPopup item={restaurant} type="restaurant" />
+        <LocationPopup item={restaurant} type="restaurant" onAddToTrip={onAddToTrip} />
       </Popup>
     </Marker>
   );

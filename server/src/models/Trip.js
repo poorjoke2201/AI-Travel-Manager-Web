@@ -7,13 +7,19 @@ const activitySchema = new mongoose.Schema(
     refId: { type: mongoose.Schema.Types.ObjectId, default: null }, // POI/Hotel/Restaurant _id when dataset-backed
     name: { type: String, required: true },
     startTime: { type: String, default: null }, // "HH:mm"
+    endTime: { type: String, default: null }, // "HH:mm"
     duration: { type: Number, default: null }, // minutes
     notes: { type: String, default: null },
+    description: { type: String, default: null },
+    website: { type: String, default: null },
+    phone: { type: String, default: null },
+    imageUrl: { type: String, default: null },
+    sourceRef: { type: String, default: null },
     location: {
       lat: { type: Number, default: null },
       lng: { type: Number, default: null },
     },
-    source: { type: String, enum: ['dataset', 'gemini', 'google_maps'], default: 'dataset' },
+    source: { type: String, enum: ['dataset', 'gemini', 'google_maps', 'geoapify'], default: 'dataset' },
   },
   { _id: false }
 );
@@ -52,7 +58,19 @@ const transportOptionSchema = new mongoose.Schema(
     approxPriceInr: { type: Number, default: null },
     distanceKm: { type: Number, default: null }, // from Google Maps, only for car
     isLiveAvailability: { type: Boolean, default: false }, // always false unless a real booking API exists
-    source: { type: String, enum: ['gemini', 'google_maps'], default: 'gemini' },
+    source: { type: String, enum: ['gemini', 'google_maps', 'geoapify'], default: 'gemini' },
+  },
+  { _id: false }
+);
+
+const budgetSummarySchema = new mongoose.Schema(
+  {
+    accommodationInr: { type: Number, default: null },
+    intercityInr: { type: Number, default: null },
+    intracityInr: { type: Number, default: null },
+    foodInr: { type: Number, default: null },
+    totalEstimatedInr: { type: Number, default: null },
+    perDayInr: { type: Number, default: null },
   },
   { _id: false }
 );
@@ -96,6 +114,8 @@ const tripSchema = new mongoose.Schema(
       default: 'any',
     },
     dailyTravelToleranceKm: { type: Number, default: null },
+    selectedHotelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', default: null },
+    selectedTransportMode: { type: String, enum: ['flight', 'train', 'bus', 'car', 'bike', null], default: null },
 
     status: {
       type: String,
@@ -105,9 +125,13 @@ const tripSchema = new mongoose.Schema(
     },
     generationError: { type: String, default: null },
 
+    overview: { type: String, default: null },
     preTrip: { type: preTripSchema, default: () => ({}) },
     transport: { type: [transportOptionSchema], default: [] },
+    intercityTransport: { type: [transportOptionSchema], default: [] },
+    intracityTransport: { type: [transportOptionSchema], default: [] },
     itinerary: { type: [daySchema], default: [] },
+    budgetSummary: { type: budgetSummarySchema, default: () => ({}) },
 
     recommendedHotel: {
       hotelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', default: null },
@@ -116,6 +140,8 @@ const tripSchema = new mongoose.Schema(
       googleRating: { type: Number, default: null },
       pricePerNightInr: { type: Number, default: null },
       conditionLabel: { type: String, default: null },
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
     },
 
     isPublic: { type: Boolean, default: false, index: true },

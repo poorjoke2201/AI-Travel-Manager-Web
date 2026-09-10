@@ -14,6 +14,7 @@ import CreateTripPage from './pages/CreateTripPage';
 import TripDetailsPage from './pages/TripDetailsPage';
 import ExplorePage from './pages/ExplorePage';
 import PublicTripsPage from './pages/PublicTripsPage';
+import PublicTripDetailsPage from './pages/PublicTripDetailsPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import Loader from './components/common/Loader';
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/public-trips" element={<PublicTripsPage />} />
+        <Route path="/public-trips/:id" element={<PublicTripDetailsPage />} />
       </Route>
 
       <Route element={<AuthLayout />}>

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { env } = require('../../config/env');
 
 function signToken(payload) {
+  if (!env.jwtSecret) throw new Error('JWT secret is not configured.');
   return jwt.sign(payload, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
 }
 

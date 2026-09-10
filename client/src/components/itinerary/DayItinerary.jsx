@@ -2,7 +2,7 @@ import ActivityCard from './ActivityCard';
 import TravelTimeCard from './TravelTimeCard';
 import { formatDate } from '../../utils/dateUtils';
 
-export default function DayItinerary({ day }) {
+export default function DayItinerary({ day, onReplaceActivity }) {
   return (
     <div className="card">
       <div className="mb-4">
@@ -14,10 +14,10 @@ export default function DayItinerary({ day }) {
       </div>
       <div>
         {day.activities.map((activity, idx) => (
-          // eslint-disable-next-line react/no-array-index-key
           <div key={`${day.day}-${idx}`}>
-            <ActivityCard activity={activity} />
-            {idx < day.activities.length - 1 && <TravelTimeCard />}
+            {activity.type === 'travel'
+              ? <TravelTimeCard activity={activity} />
+              : <ActivityCard activity={activity} day={day.day} activityIndex={idx} onReplace={onReplaceActivity} />}
           </div>
         ))}
       </div>

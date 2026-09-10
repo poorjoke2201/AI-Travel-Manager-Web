@@ -2,10 +2,66 @@ const POI = require('../models/POI');
 const Hotel = require('../models/Hotel');
 const Restaurant = require('../models/Restaurant');
 const { geocodeAddress } = require('../services/maps/geocoding.service');
+const { searchGeoapifyPlaces, getGeoapifyPlaceDetails } = require('../services/maps/geoapify.service');
 const ApiError = require('../utils/apiError');
 
 const DEFAULT_RADIUS_KM = 10;
 const RESULT_CAP = 50;
+
+function geoapifyItem(feature, type, details = null) {
+  const properties = feature.properties || {};
+  const [longitude, latitude] = feature.geometry?.coordinates || [];
+  const name = properties.name || properties.address_line1 || properties.formatted || 'Unnamed place';
+  const category = properties.categories?.[0] || type;
+  const rating = properties.datasource?.raw?.rating ?? null;
+  const base = {
+    _id: `geoapify-${properties.place_id || `${latitude}-${longitude}`}`,
+    name,
+    city: properties.city || properties.county || null,
+    category,
+    address: properties.formatted || null,
+    latitude,
+    longitude,
+    location: { type: 'Point', coordinates: [longitude, latitude] },
+    googleRating: rating,
+    rating,
+    description: details?.description || properties.description || null,
+    website: details?.website || properties.website || null,
+    phone: details?.phone || properties.contact?.phone || properties.phone || null,
+    imageUrl: details?.imageUrl || properties.image || null,
+    source: 'geoapify',
+    sourceRef: properties.place_id || null,
+  };
+
+  if (type === 'hotel') {
+    return { ...base, pricePerNightInr: null, conditionLabel: null };
+  }
+  if (type === 'restaurant') {
+    return { ...base, cuisine: properties.catering?.cuisine ? [properties.catering.cuisine] : [], avgPriceForTwo: null, isPureVeg: null };
+  }
+  return base;
+}
+
+async function searchGeoapifyExplore(coords, radiusKm) {
+  const [poiFeatures, hotelFeatures, restaurantFeatures] = await Promise.all([
+    searchGeoapifyPlaces({ lat: coords.lat, lng: coords.lng, radiusKm, categories: ['tourism.sights', 'tourism.attraction', 'heritage', 'leisure.park'] }),
+    searchGeoapifyPlaces({ lat: coords.lat, lng: coords.lng, radiusKm, categories: ['accommodation.hotel', 'accommodation.hostel', 'accommodation.guest_house'] }),
+    searchGeoapifyPlaces({ lat: coords.lat, lng: coords.lng, radiusKm, categories: ['catering.restaurant', 'catering.cafe', 'catering.fast_food'] }),
+  ]);
+
+  const enrich = async (features, type) => Promise.all(features.slice(0, 15).map(async (feature) => {
+    const placeId = feature.properties?.place_id;
+    const details = placeId ? await getGeoapifyPlaceDetails(placeId) : null;
+    return geoapifyItem(feature, type, details);
+  }));
+
+  const [pois, hotels, restaurants] = await Promise.all([
+    enrich(poiFeatures, 'poi'),
+    enrich(hotelFeatures, 'hotel'),
+    enrich(restaurantFeatures, 'restaurant'),
+  ]);
+  return { pois, hotels, restaurants };
+}
 
 function parseNumber(value, fallback) {
   const n = Number(value);
@@ -46,7 +102,17 @@ async function search(req, res, next) {
       findRestaurantsNear(coords, radiusKm, cityGuess),
     ]);
 
-    res.status(200).json({ success: true, data: { coordinates: coords, pois, hotels, restaurants } });
+    const geoapify = await searchGeoapifyExplore(coords, radiusKm);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        coordinates: coords,
+        pois: mergeUnique(pois, geoapify.pois),
+        hotels: mergeUnique(hotels, geoapify.hotels),
+        restaurants: mergeUnique(restaurants, geoapify.restaurants),
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -207,6 +273,16 @@ async function findRestaurantsNear(coords, radiusKm, cityFallback) {
 
 function escapeRegExp(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function mergeUnique(datasetItems, geoapifyItems) {
+  const seen = new Set();
+  return [...datasetItems, ...geoapifyItems].filter((item) => {
+    const key = `${String(item.name || '').toLowerCase()}|${item.latitude ?? item.location?.coordinates?.[1]}|${item.longitude ?? item.location?.coordinates?.[0]}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, RESULT_CAP);
 }
 
 module.exports = { search, browsePOIs, browseHotels, browseRestaurants, nearby };

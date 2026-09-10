@@ -116,6 +116,11 @@ function poiActivity(poi, startMinutes, durationMins) {
     startTime: minutesToTime(startMinutes),
     duration: durationMins,
     notes: poi.source === 'gemini' ? 'AI-suggested addition' : null,
+    description: poi.description || null,
+    website: poi.website || null,
+    phone: poi.phone || null,
+    imageUrl: poi.imageUrl || null,
+    sourceRef: poi.sourceRef || null,
     location: { lat: poi.latitude ?? null, lng: poi.longitude ?? null },
     source: poi.source || 'dataset',
   };
@@ -129,6 +134,9 @@ function restaurantActivity(restaurant, startMinutes) {
     startTime: minutesToTime(startMinutes),
     duration: 60,
     notes: restaurant.cuisine ? `Cuisine: ${restaurant.cuisine.join(', ')}` : null,
+    description: restaurant.description || null,
+    website: restaurant.website || null,
+    phone: restaurant.phone || null,
     location: { lat: restaurant.latitude ?? null, lng: restaurant.longitude ?? null },
     source: restaurant.source || 'dataset',
   };

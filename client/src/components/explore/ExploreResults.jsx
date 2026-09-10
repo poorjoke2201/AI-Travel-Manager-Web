@@ -1,7 +1,7 @@
 import { formatInr, formatRating, toTitleCase } from '../../utils/formatters';
 import EmptyState from '../common/EmptyState';
 
-export default function ExploreResults({ activeType, results }) {
+export default function ExploreResults({ activeType, results, onAddToTrip }) {
   const items = results[activeType === 'poi' ? 'pois' : `${activeType}s`] || [];
 
   if (!items.length) {
@@ -21,6 +21,11 @@ export default function ExploreResults({ activeType, results }) {
             {item.pricePerNightInr != null && <span>{formatInr(item.pricePerNightInr)}/night</span>}
             {item.avgPriceForTwo != null && <span>{formatInr(item.avgPriceForTwo)} for two</span>}
           </div>
+          {onAddToTrip && (
+            <button type="button" className="mt-3 text-xs font-semibold text-indigo hover:underline" onClick={() => onAddToTrip(item, activeType)}>
+              Add to trip
+            </button>
+          )}
         </div>
       ))}
     </div>

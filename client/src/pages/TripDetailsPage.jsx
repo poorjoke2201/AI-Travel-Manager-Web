@@ -16,7 +16,7 @@ import { useTrip } from '../hooks/useTrips';
 export default function TripDetailsPage({ initialTab = 'overview' }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { trip, isLoading, error, fetchTrip, regenerate, remove } = useTrip(id);
+  const { trip, isLoading, error, fetchTrip, regenerate, replaceActivity, remove } = useTrip(id);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -55,7 +55,24 @@ export default function TripDetailsPage({ initialTab = 'overview' }) {
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {trip.overview && (
+            <div className="card">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Trip overview</p>
+              <p className="mt-3 text-xl font-semibold text-ink">{trip.overview}</p>
+            </div>
+          )}
+
           {trip.recommendedHotel && <HotelCard hotel={trip.recommendedHotel} />}
+
+          {trip.budgetSummary && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryStat label="Accommodation" value={trip.budgetSummary.accommodationInr ? `₹${trip.budgetSummary.accommodationInr.toLocaleString()}` : 'Not estimated'} />
+              <SummaryStat label="Intercity travel" value={trip.budgetSummary.intercityInr ? `₹${trip.budgetSummary.intercityInr.toLocaleString()}` : 'Not estimated'} />
+              <SummaryStat label="Intracity travel" value={trip.budgetSummary.intracityInr ? `₹${trip.budgetSummary.intracityInr.toLocaleString()}` : 'Not estimated'} />
+              <SummaryStat label="Trip total" value={trip.budgetSummary.totalEstimatedInr ? `₹${trip.budgetSummary.totalEstimatedInr.toLocaleString()}` : 'Not estimated'} />
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <SummaryStat label="Place interests" value={trip.placePreferences.join(', ') || 'None specified'} />
             <SummaryStat label="Food preferences" value={trip.foodPreferences.join(', ') || 'None specified'} />
@@ -65,12 +82,12 @@ export default function TripDetailsPage({ initialTab = 'overview' }) {
       )}
 
       {activeTab === 'pre-trip' && <PreTripSection preTrip={trip.preTrip} />}
-      {activeTab === 'transport' && <TransportSection transport={trip.transport} />}
+      {activeTab === 'transport' && <TransportSection transport={trip.transport} intercityTransport={trip.intercityTransport} intracityTransport={trip.intracityTransport} />}
 
       {activeTab === 'itinerary' && (
         <div className="space-y-6">
           {trip.itinerary?.length ? (
-            trip.itinerary.map((day) => <DayItinerary key={day.day} day={day} />)
+            trip.itinerary.map((day) => <DayItinerary key={day.day} day={day} onReplaceActivity={replaceActivity} />)
           ) : (
             <p className="text-ink-500">No itinerary generated yet.</p>
           )}

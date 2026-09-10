@@ -22,7 +22,8 @@ function scorePoi(poi, trip, destinationCoords) {
   let proximity = 0.5;
   if (destinationCoords && typeof poi.latitude === 'number' && typeof poi.longitude === 'number') {
     const distanceKm = haversineDistanceKm(destinationCoords, { lat: poi.latitude, lng: poi.longitude });
-    proximity = Number.isFinite(distanceKm) ? Math.max(0, 1 - distanceKm / 30) : 0.5;
+    const tolerance = Number(trip.dailyTravelToleranceKm) || 30;
+    proximity = Number.isFinite(distanceKm) ? Math.max(0, 1 - distanceKm / tolerance) : 0.5;
   }
   return weightedScore(WEIGHTS, { preference, rating, proximity });
 }
@@ -79,7 +80,18 @@ async function recommendPOIs(trip, destinationCoords) {
       entryFeeInr: poi.entryFeeInr,
       latitude: poi.latitude,
       longitude: poi.longitude,
+      openingTime: poi.openingTime,
+      closingTime: poi.closingTime,
+      weeklyOff: poi.weeklyOff,
+      indoorOutdoor: poi.indoorOutdoor,
+      bestTimeToVisit: poi.bestTimeToVisit,
       description: poi.description,
+      website: poi.website,
+      phone: poi.phone,
+      wikipedia: poi.wikipedia,
+      imageUrl: poi.imageUrl,
+      sourceRef: poi.sourceRef,
+      sourceProvider: poi.source,
       source: 'dataset',
     }));
 

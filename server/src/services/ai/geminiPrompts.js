@@ -23,6 +23,7 @@ Trip context:
 - Place interests: ${trip.placePreferences.join(', ') || 'none specified'}
 - Food preferences: ${trip.foodPreferences.join(', ') || 'none specified'}
 - Accommodation preference: ${trip.accommodationPreference}
+- Daily local travel tolerance: ${trip.dailyTravelToleranceKm ?? 'not specified'} km
 `.trim();
 }
 
@@ -90,13 +91,20 @@ Return exactly this JSON shape:
  */
 function buildItineraryPrompt({ trip, candidatePOIs, candidateHotels, candidateRestaurants, weatherContext }) {
   const poiList = candidatePOIs
-    .map((p) => `  - id=${p.id}, name="${p.name}", category=${p.category || 'n/a'}, rating=${p.googleRating ?? 'n/a'}, visitDurationHrs=${p.visitDurationHrs ?? 'n/a'}, lat=${p.latitude}, lng=${p.longitude}`)
+    .map((p) => {
+      const hours = (p.openingTime && p.closingTime) ? ` opens=${p.openingTime} closes=${p.closingTime}` : '';
+      const off = p.weeklyOff ? ` closed=${p.weeklyOff}` : '';
+      return `  - id=${p.id}, name="${p.name}", category=${p.category || 'n/a'}, rating=${p.googleRating ?? 'n/a'}, visitDurationHrs=${p.visitDurationHrs ?? 1}, lat=${p.latitude}, lng=${p.longitude}, indoorOutdoor=${p.indoorOutdoor || 'n/a'}, bestTime=${p.bestTimeToVisit || 'n/a'}${hours}${off}`;
+    })
     .join('\n');
   const hotelList = candidateHotels
     .map((h) => `  - id=${h.id}, name="${h.name}", rating=${h.googleRating ?? 'n/a'}, pricePerNightInr=${h.pricePerNightInr ?? 'n/a'}`)
     .join('\n');
   const restaurantList = candidateRestaurants
-    .map((r) => `  - id=${r.id}, name="${r.name}", cuisine=${(r.cuisine || []).join('/') || 'n/a'}, rating=${r.rating ?? 'n/a'}, isPureVeg=${r.isPureVeg ?? 'n/a'}`)
+    .map((r) => {
+      const hours = (r.openingTime && r.closingTime) ? ` opens=${r.openingTime} closes=${r.closingTime}` : '';
+      return `  - id=${r.id}, name="${r.name}", cuisine=${(r.cuisine || []).join('/') || 'n/a'}, rating=${r.rating ?? 'n/a'}, isPureVeg=${r.isPureVeg ?? 'n/a'}, lat=${r.latitude}, lng=${r.longitude}${hours}`;
+    })
     .join('\n');
 
   return `
@@ -105,29 +113,34 @@ Do not include markdown code fences, prose, or any text outside the JSON object.
 
 ${tripSummaryBlock(trip)}
 
-AI-estimated weather/travel context for the trip (not a verified forecast):
-${weatherContext || 'No specific weather context available - plan generally.'}
+IMPORTANT SCHEDULING RULES:
+- Day 1 starts AFTER the traveller arrives from ${trip.origin}. Do NOT schedule any POI before 11:00 on Day 1.
+- ALWAYS respect opening and closing times listed for each POI/restaurant. Never schedule a visit outside those hours.
+- ALWAYS respect weekly off days — do not schedule a visit on a POI's closed day.
+- Add realistic travel time between consecutive POIs (estimate ~15-30 min for nearby, ~45-60 min for far apart based on lat/lng).
+- Group geographically nearby POIs on the same day to minimise travel.
+- Insert a breakfast activity (~08:00, 30 min) from the restaurant list on Day 2 onwards.
+- Insert lunch (~12:30, 60 min) and dinner (~19:30, 60 min) from the restaurant list every day.
+- Between each POI/restaurant, insert a "travel" activity with realistic duration in minutes and notes showing distance.
 
-Candidate points of interest (choose from these; do NOT invent POIs unless the list is clearly
-insufficient for the trip length, in which case you may add extra activities with
-"source": "gemini" and "datasetId": null):
+AI-estimated weather context:
+${weatherContext || 'No specific weather context available.'}
+
+Candidate POIs:
 ${poiList || '  (none available)'}
 
-Candidate hotels (for context/base location only):
+Candidate hotels (base location reference):
 ${hotelList || '  (none available)'}
 
-Candidate restaurants (place meals near the day's POIs where sensible):
+Candidate restaurants:
 ${restaurantList || '  (none available)'}
 
 Requirements:
 - Produce exactly ${trip.numberOfDays} day(s), dated sequentially starting ${trip.startDate}.
-- Prefer candidate POIs/restaurants above; when you use one, set "datasetId" to its exact id and "source":"dataset".
-- Group geographically nearby POIs on the same day rather than zig-zagging across the city.
-- Respect pace "${trip.pace}": relaxed ≈ 2-3 activities/day, balanced ≈ 4-5, packed ≈ 6-7.
-- Insert restaurant activities around typical meal times (lunch ~12:00-14:00, dinner ~19:00-21:00).
-- Use the weather context to favor indoor activities if bad weather is indicated.
-- Every activity needs a realistic startTime ("HH:mm") and duration in minutes.
-- Do not fabricate live transport or booking availability anywhere in the itinerary.
+- When using a candidate, set "datasetId" to its exact id and "source":"dataset".
+- Respect pace "${trip.pace}": relaxed=2-3 POIs/day, balanced=4-5, packed=6-7.
+- Every activity needs startTime ("HH:mm") and duration in minutes.
+- Travel activities between POIs must have type="travel" and notes with estimated distance.
 
 Return exactly this JSON shape:
 {
@@ -135,12 +148,12 @@ Return exactly this JSON shape:
     {
       "day": 1,
       "date": "YYYY-MM-DD",
-      "summary": "one sentence describing the day",
+      "summary": "one sentence",
       "weatherContext": "short note or null",
       "activities": [
         {
           "type": "poi|restaurant|hotel|travel|break",
-          "datasetId": "id from the candidate list above, or null if AI-generated",
+          "datasetId": "id or null",
           "name": "string",
           "startTime": "HH:mm",
           "duration": number,

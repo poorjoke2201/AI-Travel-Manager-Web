@@ -5,9 +5,11 @@ import ExploreMap from '../components/explore/ExploreMap';
 import ExploreResults from '../components/explore/ExploreResults';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { useExplore } from '../hooks/useExplore';
+import { useNavigate } from 'react-router-dom';
 
 export default function ExplorePage() {
   const { results, isLoading, error, search } = useExplore();
+  const navigate = useNavigate();
   const [activeType, setActiveType] = useState('poi');
   const [category, setCategory] = useState('');
   const [minRating, setMinRating] = useState('');
@@ -21,6 +23,9 @@ export default function ExplorePage() {
   }
 
   const filteredResults = applyClientFilters(results, activeType, { category, minRating });
+  function handleAddToTrip() {
+    navigate('/create-trip');
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -44,10 +49,10 @@ export default function ExplorePage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <ExploreMap activeType={activeType} results={filteredResults} searchedCoordinates={results.coordinates} />
+          <ExploreMap activeType={activeType} results={filteredResults} searchedCoordinates={results.coordinates} onAddToTrip={handleAddToTrip} />
         </div>
         <div>
-          <ExploreResults activeType={activeType} results={filteredResults} />
+          <ExploreResults activeType={activeType} results={filteredResults} onAddToTrip={handleAddToTrip} />
         </div>
       </div>
     </div>
