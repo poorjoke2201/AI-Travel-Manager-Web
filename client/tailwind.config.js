@@ -51,6 +51,7 @@ export default {
       fontFamily: {
         display: ['Fraunces', 'Georgia', 'serif'],
         editorial: ['Cormorant Garamond', 'Georgia', 'serif'],
+        handwritten: ['Caveat', 'cursive'],
         sans: ['Manrope', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
