@@ -22,18 +22,18 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-stone">
-      <header className="border-b border-stone-300 bg-white">
+      <header className="relative z-40 border-b border-stone-300 bg-stone-50/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/dashboard" className="font-display text-xl font-semibold text-ink">
+          <Link to="/dashboard" className="font-handwritten text-4xl font-bold leading-none text-ink">
             Travel Manager
           </Link>
           <GlobalSearch />
-          <nav className="flex items-center gap-6 text-sm font-medium text-ink-500">
+          <nav className="flex items-center gap-1 text-sm font-medium text-ink-500">
             {NAV_ITEMS.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
-                className={({ isActive }) => (isActive ? 'text-indigo' : 'hover:text-ink')}
+                className={({ isActive }) => (isActive ? 'rounded-full bg-ocean-100 px-3 py-2 text-ocean-700' : 'rounded-full px-3 py-2 hover:bg-stone-200 hover:text-ink')}
               >
                 {item.label}
               </NavLink>
