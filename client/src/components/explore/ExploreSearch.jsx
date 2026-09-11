@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Input from '../common/Input';
+import CityAutocomplete from '../common/CityAutocomplete';
 import Button from '../common/Button';
 
 export default function ExploreSearch({ onSearch, isLoading }) {
@@ -12,11 +12,11 @@ export default function ExploreSearch({ onSearch, isLoading }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-3">
-      <Input
+      <CityAutocomplete
         name="destination-search"
         placeholder="Search a destination, e.g. Mysuru"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={setQuery}
         className="flex-1"
       />
       <Button type="submit" isLoading={isLoading}>

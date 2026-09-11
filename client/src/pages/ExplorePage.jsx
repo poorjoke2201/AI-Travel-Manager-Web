@@ -24,6 +24,7 @@ export default function ExplorePage() {
   const [planDay, setPlanDay] = useState(1);
   const [planPreview, setPlanPreview] = useState(null);
   const [planError, setPlanError] = useState(null);
+  const [headerParallax, setHeaderParallax] = useState({ x: 0, y: 0 });
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
@@ -61,14 +62,34 @@ export default function ExplorePage() {
     }
   }
 
+  function handleHeaderParallax(event) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    setHeaderParallax({
+      x: ((event.clientX - bounds.left) / bounds.width - 0.5) * 2,
+      y: ((event.clientY - bounds.top) / bounds.height - 0.5) * 2,
+    });
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="relative mb-8 overflow-hidden border-b border-stone-300 pb-7">
-        <img src="/assets/maps/atlas-background.webp" alt="" className="pointer-events-none absolute -right-10 -top-24 h-64 w-96 object-cover opacity-20" />
-        <div className="relative">
+      <div
+        className="relative mb-8 overflow-hidden border-b border-stone-300 pb-7"
+        onMouseMove={handleHeaderParallax}
+        onMouseLeave={() => setHeaderParallax({ x: 0, y: 0 })}
+      >
+        <div className="relative flex items-center gap-3 sm:gap-5">
+          <div className="max-w-2xl">
           <p className="eyebrow">The atlas / explore</p>
           <h1 className="mt-3 font-display text-4xl font-semibold sm:text-5xl">Find somewhere to follow.</h1>
           <p className="mt-3 max-w-xl text-ink-500">Search a city and collect points of interest, stays, and places to eat for the next page of your journey.</p>
+          </div>
+          <img
+            src="/assets/ephemera/map.webp"
+            alt=""
+            className="hidden h-40 w-52 shrink-0 object-contain drop-shadow-md transition-transform duration-300 sm:block"
+            style={{ transform: `translate(${headerParallax.x * 9}px, ${headerParallax.y * 7}px) rotate(${headerParallax.x * 3}deg)` }}
+          />
         </div>
       </div>
 

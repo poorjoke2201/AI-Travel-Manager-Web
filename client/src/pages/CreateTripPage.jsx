@@ -16,6 +16,7 @@ export default function CreateTripPage() {
   const [selectedHotelId, setSelectedHotelId] = useState(null);
   const [selectedTransportMode, setSelectedTransportMode] = useState(null);
   const [error, setError] = useState(null);
+  const [headerParallax, setHeaderParallax] = useState({ x: 0, y: 0 });
 
   async function handleSubmit(payload) {
     setError(null);
@@ -50,6 +51,15 @@ export default function CreateTripPage() {
     }
   }
 
+  function handleHeaderParallax(event) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    setHeaderParallax({
+      x: ((event.clientX - bounds.left) / bounds.width - 0.5) * 2,
+      y: ((event.clientY - bounds.top) / bounds.height - 0.5) * 2,
+    });
+  }
+
   if (isGenerating) {
     return <TripGenerationLoader />;
   }
@@ -74,15 +84,24 @@ export default function CreateTripPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-10 flex items-end justify-between gap-6 border-b border-stone-300 pb-7">
-        <div>
+      <div
+        className="mb-10 flex items-center gap-3 border-b border-stone-300 pb-7 sm:gap-5"
+        onMouseMove={handleHeaderParallax}
+        onMouseLeave={() => setHeaderParallax({ x: 0, y: 0 })}
+      >
+        <div className="max-w-2xl">
           <p className="eyebrow">New journal page / 01</p>
           <h1 className="mt-3 font-display text-4xl font-semibold sm:text-5xl">Where are we going?</h1>
           <p className="mt-3 max-w-xl text-ink-500">
             Tell us what sounds good. We&apos;ll shape the first draft of a journey around it.
           </p>
         </div>
-        <img src="/assets/illustrations/compass.svg" alt="" className="hidden h-20 w-20 opacity-70 sm:block" />
+        <img
+          src="/assets/ephemera/compass.webp"
+          alt=""
+          className="hidden h-36 w-36 shrink-0 object-contain drop-shadow-md transition-transform duration-300 sm:block"
+          style={{ transform: `translate(${headerParallax.x * 9}px, ${headerParallax.y * 7}px) rotate(${headerParallax.x * 4}deg)` }}
+        />
       </div>
       <TripForm onSubmit={handleSubmit} isSubmitting={isDiscovering} submitError={error} />
     </div>

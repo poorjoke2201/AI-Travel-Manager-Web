@@ -19,8 +19,10 @@ const { buildDeterministicItinerary } = require('../itinerary/itineraryOptimizer
 const { planItineraryRoutes } = require('../itinerary/routePlanner.service');
 const { enrichCityDataIfNeeded } = require('../scraper/cityData.service');
 const { getGeoapifyPlaceDetails } = require('../maps/geoapify.service');
+const { getWeatherForecast } = require('../weather/openMeteo.service');
 
 const MAX_DESTINATION_DISTANCE_KM = 100;
+const INTERCITY_MODES = ['flight', 'train', 'bus', 'car'];
 
 /**
  * Runs the full generation pipeline described in spec sections 13 and 45,
@@ -126,7 +128,13 @@ async function generateTrip(tripId, userId) {
 }
 
 async function generatePreTripSection(trip) {
-  const prompt = buildPreTripPrompt(serializeTripForPrompt(trip));
+  const weather = await getWeatherForecast({
+    latitude: trip.destinationLocation?.lat,
+    longitude: trip.destinationLocation?.lng,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+  });
+  const prompt = buildPreTripPrompt({ ...serializeTripForPrompt(trip), weatherContext: weather });
   const result = await generateValidatedJson(prompt, validatePreTrip);
 
   if (result.ok) {
@@ -134,14 +142,49 @@ async function generatePreTripSection(trip) {
   }
 
   logger.warn(`Pre-trip AI generation failed for trip ${trip._id}, using fallback`, result.errors);
+  return buildPreTripFallback(weather);
+}
+
+function buildPreTripFallback(weather = null) {
+  const days = weather?.days || [];
+  const maxTemps = days.map((day) => day.maxC).filter(Number.isFinite);
+  const minTemps = days.map((day) => day.minC).filter(Number.isFinite);
+  const maxRainChance = Math.max(0, ...days.map((day) => day.rainChance).filter(Number.isFinite));
+  const maxUv = Math.max(0, ...days.map((day) => day.uv).filter(Number.isFinite));
+  const maxTemp = maxTemps.length ? Math.max(...maxTemps) : null;
+  const minTemp = minTemps.length ? Math.min(...minTemps) : null;
+  const clothing = ['Comfortable walking shoes', 'Weather-appropriate clothing'];
+  const destinationSpecific = ['Reusable water bottle'];
+  const travelTips = [
+    'Keep digital and physical copies of your ID.',
+    'Carry some cash alongside digital payments.',
+  ];
+
+  if (maxTemp >= 30) {
+    clothing.push('Breathable cotton layers');
+    destinationSpecific.push('Sunscreen', 'Wide-brim hat');
+    travelTips.push('Stay hydrated and take breaks from direct sun.');
+  }
+  if (minTemp != null && minTemp <= 18) clothing.push('Light jacket or warm layer');
+  if (maxRainChance >= 40) {
+    clothing.push('Quick-dry clothes');
+    destinationSpecific.push('Compact umbrella or rain jacket', 'Water-resistant footwear');
+    travelTips.push('Keep electronics and spare clothes in a waterproof bag.');
+  }
+  if (maxUv >= 6 && !destinationSpecific.includes('Sunscreen')) {
+    destinationSpecific.push('Sunscreen', 'Sunglasses');
+  }
+
   return {
     packingChecklist: {
       essentials: ['ID proof', 'Phone charger', 'Power bank', 'Basic medicines', 'Face masks'],
-      clothing: ['Comfortable walking shoes', 'Weather-appropriate clothing', 'Light jacket'],
-      destinationSpecific: ['Reusable water bottle', 'Sunscreen'],
+      clothing,
+      destinationSpecific,
     },
-    weatherAdvice: 'Weather guidance is unavailable right now - check a forecast closer to your travel date.',
-    travelTips: ['Keep digital and physical copies of your ID.', 'Carry some cash alongside digital payments.'],
+    weatherAdvice: weather?.summary
+      ? `${weather.summary}. Use this as planning guidance and check the forecast again closer to departure.`
+      : 'Weather guidance is unavailable right now - check a forecast closer to your travel date.',
+    travelTips,
     generatedBy: 'fallback',
     isAiEstimate: true,
   };
@@ -189,7 +232,7 @@ async function generateTransportSection(trip) {
     }
   }
 
-  const intercityTransport = options.filter((o) => ['flight', 'train', 'bus', 'car'].includes(o.mode));
+  const intercityTransport = ensureIntercityTransportOptions(trip, options);
   const intracityTransport = [
     {
       mode: 'bus',
@@ -211,9 +254,52 @@ async function generateTransportSection(trip) {
 
   return {
     transport: options,
-    intercityTransport: intercityTransport.length ? intercityTransport : options,
+    intercityTransport,
     intracityTransport,
   };
+}
+
+function ensureIntercityTransportOptions(trip, options = []) {
+  const intercityOptions = options.filter((option) => INTERCITY_MODES.includes(option.mode));
+  const selectedMode = INTERCITY_MODES.includes(trip.selectedTransportMode)
+    ? trip.selectedTransportMode
+    : 'train';
+
+  const summaries = {
+    flight: 'Flight is the fastest intercity option when an airport route is available. Check the operator for current schedules and fares.',
+    train: 'Train is a practical intercity option with an estimated fare. Check the operator for current schedules and fares.',
+    bus: 'Bus is a lower-cost intercity option. Check the operator for current schedules and fares.',
+    car: 'Car is a flexible intercity option. Check the operator for current schedules and fares.',
+  };
+  const existingModes = new Set(intercityOptions.map((option) => option.mode));
+
+  for (const mode of INTERCITY_MODES) {
+    if (!existingModes.has(mode)) {
+      intercityOptions.push({
+        mode,
+        summary: summaries[mode],
+        approxDurationHrs: null,
+        approxPriceInr: estimateIntercityPrice(trip, mode),
+        isLiveAvailability: false,
+        source: 'gemini',
+      });
+    }
+  }
+
+  intercityOptions.sort((a, b) => Number(b.mode === selectedMode) - Number(a.mode === selectedMode));
+
+  return intercityOptions.map((option) => ({
+    ...option,
+    approxPriceInr: Number.isFinite(option.approxPriceInr) && option.approxPriceInr > 0
+      ? option.approxPriceInr
+      : estimateIntercityPrice(trip, option.mode),
+  }));
+}
+
+function estimateIntercityPrice(trip, mode) {
+  const budget = Number(trip.budget) || 25000;
+  const rates = { flight: 0.35, train: 0.12, bus: 0.08, car: 0.18 };
+  return Math.max(mode === 'flight' ? 1500 : 450, Math.round(budget * (rates[mode] || rates.train)));
 }
 
 async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
@@ -529,4 +615,6 @@ module.exports = {
   buildTripOverview,
   buildBudgetSummary,
   anchorDaysToAccommodation,
+  ensureIntercityTransportOptions,
+  buildPreTripFallback,
 };

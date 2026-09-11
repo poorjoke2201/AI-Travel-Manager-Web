@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import VoicesSection from '../components/common/VoicesSection';
 
 const HERO_SLIDES = [
   {
@@ -482,6 +483,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <VoicesSection />
     </div>
   );
 }

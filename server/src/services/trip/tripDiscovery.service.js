@@ -31,13 +31,33 @@ function serializeTrip(payload, destinationCoords) {
   };
 }
 
+function mergeTransportOptions(...optionLists) {
+  const merged = [];
+  const byMode = new Map();
+
+  for (const options of optionLists) {
+    for (const option of Array.isArray(options) ? options : []) {
+      if (!option?.mode) continue;
+      const existingIndex = byMode.get(option.mode);
+      if (existingIndex == null) {
+        byMode.set(option.mode, merged.length);
+        merged.push(option);
+      } else if (Number.isFinite(option.distanceKm) && !Number.isFinite(merged[existingIndex].distanceKm)) {
+        merged[existingIndex] = option;
+      }
+    }
+  }
+
+  return merged;
+}
+
 function mergeDiscoveryResults(baseOptions = {}, webOptions = {}) {
   const merged = {
     destination: baseOptions.destination || webOptions.destination || null,
     places: [...(Array.isArray(baseOptions.places) ? baseOptions.places : []), ...(Array.isArray(webOptions.places) ? webOptions.places : [])],
     stays: [...(Array.isArray(baseOptions.stays) ? baseOptions.stays : []), ...(Array.isArray(webOptions.stays) ? webOptions.stays : [])],
     restaurants: [...(Array.isArray(baseOptions.restaurants) ? baseOptions.restaurants : []), ...(Array.isArray(webOptions.restaurants) ? webOptions.restaurants : [])],
-    transport: [...(Array.isArray(baseOptions.transport) ? baseOptions.transport : []), ...(Array.isArray(webOptions.transport) ? webOptions.transport : [])],
+    transport: mergeTransportOptions(baseOptions.transport, webOptions.transport),
     intracityTransport: [...(Array.isArray(baseOptions.intracityTransport) ? baseOptions.intracityTransport : []), ...(Array.isArray(webOptions.intracityTransport) ? webOptions.intracityTransport : [])],
   };
 
@@ -100,10 +120,25 @@ async function discoverTripOptions(payload) {
     intracityTransport: webDiscovery.intracityTransport,
   });
 
+  const intercityDistance = roadRoute?.distanceKm
+    || (originCoords && destinationCoords ? haversineDistanceKm(originCoords, destinationCoords) : null);
+  if (intercityDistance >= 500 && !merged.transport.some((option) => option.mode === 'flight')) {
+    const budget = Number(payload.budget) || 25000;
+    merged.transport.push({
+      mode: 'flight',
+      summary: `Flight is a time-saving option for this long intercity route. Check the operator for current schedules and fares.`,
+      approxDurationHrs: Math.max(1, intercityDistance / 700),
+      approxPriceInr: Math.max(1500, Math.round(budget * 0.35)),
+      distanceKm: intercityDistance,
+      isLiveAvailability: false,
+      source: 'gemini',
+    });
+  }
+
   return {
     ...merged,
     intracityTransport: merged.intracityTransport.length ? merged.intracityTransport : transport,
   };
 }
 
-module.exports = { discoverTripOptions, mergeDiscoveryResults };
+module.exports = { discoverTripOptions, mergeDiscoveryResults, mergeTransportOptions };

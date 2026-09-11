@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
 
-export default function CityAutocomplete({ label, name, placeholder, value, onChange, error, required }) {
+export default function CityAutocomplete({ label, name, placeholder, value, onChange, error, required, className = '' }) {
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
@@ -52,10 +52,10 @@ export default function CityAutocomplete({ label, name, placeholder, value, onCh
   }
 
   return (
-    <div ref={containerRef} className="relative">
-      <label className="mb-1 block text-sm font-medium text-ink-700">
+    <div ref={containerRef} className={`relative ${className}`}>
+      {label && <label className="mb-1 block text-sm font-medium text-ink-700">
         {label}{required && <span className="ml-0.5 text-red-500">*</span>}
-      </label>
+      </label>}
       <input
         type="text"
         name={name}

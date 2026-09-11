@@ -34,9 +34,14 @@ Do not include markdown code fences, prose, or any text outside the JSON object.
 
 ${tripSummaryBlock(trip)}
 
+Weather data for the destination:
+${trip.weatherContext ? JSON.stringify(trip.weatherContext) : 'No weather data is available; use sensible seasonal and destination-based guidance.'}
+
 Requirements:
-- All weather information is AI-estimated guidance, NOT a verified forecast. Do not state exact temperatures/precipitation as fact - phrase advisories generally (e.g. "likely warm and humid").
+- Use the weather data as planning context, but describe it as an estimate and do not promise conditions will occur exactly.
 - Packing items should reflect the destination, season implied by the dates, trip duration, and trip type.
+- Combine the standard essentials with weather-specific items such as breathable layers, rain protection, sunscreen, a hat, warm layers, or a light jacket when supported by the weather data.
+- Mention practical weather precautions in travelTips when they make sense, such as hydration, sun protection, or keeping footwear dry.
 - Keep each list item short (a few words).
 
 Return exactly this JSON shape:

@@ -129,6 +129,47 @@
   .feature-hero-enter {
     animation: feature-slide-in 650ms cubic-bezier(0.22, 0.8, 0.2, 1) both;
   }
+
+  .voices-section {
+    @apply relative mt-24 overflow-hidden border-y border-stone-300 px-1 py-12 sm:mt-32 sm:py-16;
+    background-color: #eee5d2;
+    background-image: linear-gradient(rgba(239, 230, 211, 0.72), rgba(239, 230, 211, 0.72)), url('/assets/texture/paper-grains.webp');
+    background-size: auto, 30rem;
+  }
+
+  .voices-heading-row { @apply flex items-end justify-between gap-6; }
+  .voices-kicker { @apply !text-clay-600; }
+  .voices-heading-row h2 { @apply mt-3 max-w-xl font-editorial text-5xl font-semibold leading-[0.92] text-clay-600 sm:text-7xl; }
+  .voices-intro { @apply mt-4 text-sm tracking-wide text-ink-500 sm:text-base; }
+  .voices-index { @apply hidden max-w-[12rem] border-l border-stone-300 pl-4 text-right text-[0.65rem] uppercase leading-5 tracking-[0.16em] text-ink-500 sm:block; }
+  .voices-rule { @apply mt-8 h-px w-full bg-stone-300; }
+  .voices-collage { @apply relative mx-auto mt-8 grid max-w-6xl gap-8 sm:grid-cols-2 lg:min-h-[56rem] lg:grid-cols-3 lg:gap-x-8 lg:gap-y-12; }
+
+  .voice-paper {
+    --pointer-x: 0;
+    --pointer-y: 0;
+    @apply relative min-h-[25rem] border border-[#d8d0c1] px-6 pb-6 pt-10 text-ink transition-[transform,box-shadow,opacity] duration-500 ease-out sm:px-8;
+    isolation: isolate;
+    background-color: #f8f4e9;
+    background-image: linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.42)), url('/assets/texture/paper-grains.webp');
+    background-size: auto, 22rem;
+    box-shadow: 0 14px 20px -17px rgba(43, 42, 35, 0.72);
+    clip-path: polygon(0.8% 0, 99% 0.7%, 100% 98.4%, 96% 99.1%, 92% 98.2%, 87% 99.4%, 82% 98.5%, 76% 99.3%, 71% 98.2%, 65% 99.5%, 58% 98.6%, 52% 99.4%, 45% 98.4%, 39% 99.3%, 33% 98.1%, 27% 99.4%, 21% 98.5%, 14% 99.1%, 8% 98.2%, 0 99.1%);
+    opacity: 0;
+    transform: translate3d(0, 1.5rem, 0) rotate(var(--voice-rotation));
+  }
+  .voice-paper-visible { opacity: 1; transform: translate3d(calc(var(--pointer-x) * -4px), calc(var(--pointer-y) * -4px), 0) rotate(var(--voice-rotation)); }
+  .voice-paper:hover { z-index: 5; box-shadow: 0 22px 30px -18px rgba(43, 42, 35, 0.78); }
+  .voice-paper-1 { @apply lg:mt-16; }
+  .voice-paper-2 { @apply lg:-mt-2; }
+  .voice-paper-3 { @apply lg:mt-28; }
+  .voice-paper-4 { @apply lg:col-start-1 lg:mt-[-2rem]; }
+  .voice-paper-5 { @apply lg:col-start-3 lg:mt-12; }
+  .voice-tape { @apply absolute left-1/2 top-0 z-10 h-7 w-32 -translate-x-1/2 -translate-y-1/3 rotate-[-2deg]; background: rgba(193, 187, 155, 0.62); box-shadow: 0 1px 2px rgba(72, 68, 53, 0.12); transform: translate3d(calc(-50% + var(--pointer-x) * 6px), calc(-33% + var(--pointer-y) * 6px), 0) rotate(-2deg); clip-path: polygon(1% 10%, 96% 0, 100% 87%, 85% 100%, 66% 92%, 47% 100%, 25% 91%, 4% 96%); }
+  .voice-paper-content { transform: translate3d(calc(var(--pointer-x) * -2px), calc(var(--pointer-y) * -2px), 0); transition: transform 500ms ease-out; }
+  .voice-label { @apply mb-7 text-[0.62rem] font-bold uppercase tracking-[0.18em] text-clay-600; }
+  .voice-paper blockquote { @apply font-mono text-[0.9rem] leading-[1.75] text-[#4d4a43] sm:text-[0.95rem]; }
+  .voice-paper footer { @apply mt-8 flex flex-wrap justify-between gap-2 border-t border-[#d8d0c1] pt-3 font-mono text-[0.67rem] leading-5 text-[#777166]; }
 }
 
 @keyframes feature-slide-in {
