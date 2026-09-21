@@ -45,7 +45,7 @@ export default function PublicTripDetailsPage() {
       <div className="mt-8 space-y-6">
         {trip.itinerary?.length ? (
           <>
-            <ItineraryMap days={trip.itinerary} />
+            <ItineraryMap days={trip.itinerary} accommodation={trip.recommendedHotel} />
             {trip.itinerary.map((day) => <DayItinerary key={day.day} day={day} />)}
           </>
         ) : (

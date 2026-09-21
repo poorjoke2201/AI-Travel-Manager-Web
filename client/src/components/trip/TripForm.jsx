@@ -25,6 +25,8 @@ const DEFAULT_VALUES = {
   accommodationPreference: 'any',
   dailyTravelToleranceKm: null,
   isPublic: false,
+  isGroupTrip: false,
+  groupMembers: [],
 };
 
 function validate(values) {

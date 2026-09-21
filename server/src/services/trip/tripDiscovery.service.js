@@ -9,6 +9,7 @@ const { generateValidatedJson } = require('../ai/gemini.service');
 const { validateTransport } = require('../ai/geminiValidator');
 const { haversineDistanceKm } = require('../../utils/haversine');
 const { discoverWebOptions } = require('../webDiscovery/webDiscovery.service');
+const { canonicalizeCityName } = require('../destination/destinationResolver.service');
 
 const DESTINATION_RADIUS_KM = 100;
 
@@ -26,6 +27,7 @@ function nearDestination(candidate, destinationCoords) {
 function serializeTrip(payload, destinationCoords) {
   return {
     ...payload,
+    destination: canonicalizeCityName(payload.destination),
     numberOfDays: computeNumberOfDays(payload.startDate, payload.endDate),
     destinationLocation: destinationCoords,
   };
@@ -51,23 +53,50 @@ function mergeTransportOptions(...optionLists) {
   return merged;
 }
 
+function dedupeByStableId(items = []) {
+  const seen = new Map();
+
+  for (const item of Array.isArray(items) ? items : []) {
+    if (!item) continue;
+    const key = String(item.id ?? item._id ?? item.mode ?? item.name ?? '').trim();
+    if (!key) continue;
+    if (!seen.has(key)) seen.set(key, item);
+  }
+
+  return [...seen.values()];
+}
+
 function mergeDiscoveryResults(baseOptions = {}, webOptions = {}) {
   const merged = {
     destination: baseOptions.destination || webOptions.destination || null,
-    places: [...(Array.isArray(baseOptions.places) ? baseOptions.places : []), ...(Array.isArray(webOptions.places) ? webOptions.places : [])],
-    stays: [...(Array.isArray(baseOptions.stays) ? baseOptions.stays : []), ...(Array.isArray(webOptions.stays) ? webOptions.stays : [])],
-    restaurants: [...(Array.isArray(baseOptions.restaurants) ? baseOptions.restaurants : []), ...(Array.isArray(webOptions.restaurants) ? webOptions.restaurants : [])],
+    places: dedupeByStableId([
+      ...(Array.isArray(baseOptions.places) ? baseOptions.places : []),
+      ...(Array.isArray(webOptions.places) ? webOptions.places : []),
+    ]),
+    stays: dedupeByStableId([
+      ...(Array.isArray(baseOptions.stays) ? baseOptions.stays : []),
+      ...(Array.isArray(webOptions.stays) ? webOptions.stays : []),
+    ]),
+    restaurants: dedupeByStableId([
+      ...(Array.isArray(baseOptions.restaurants) ? baseOptions.restaurants : []),
+      ...(Array.isArray(webOptions.restaurants) ? webOptions.restaurants : []),
+    ]),
     transport: mergeTransportOptions(baseOptions.transport, webOptions.transport),
-    intracityTransport: [...(Array.isArray(baseOptions.intracityTransport) ? baseOptions.intracityTransport : []), ...(Array.isArray(webOptions.intracityTransport) ? webOptions.intracityTransport : [])],
+    intracityTransport: dedupeByStableId([
+      ...(Array.isArray(baseOptions.intracityTransport) ? baseOptions.intracityTransport : []),
+      ...(Array.isArray(webOptions.intracityTransport) ? webOptions.intracityTransport : []),
+    ]),
   };
 
   return merged;
 }
 
 async function discoverTripOptions(payload) {
-  await enrichCityDataIfNeeded(payload.destination);
-  const destinationCoords = await geocodeAddress(`${payload.destination}, India`) || cityFallbackCoords(payload.destination);
-  const trip = serializeTrip(payload, destinationCoords);
+  const destination = canonicalizeCityName(payload.destination);
+  const normalizedPayload = { ...payload, destination };
+  await enrichCityDataIfNeeded(destination);
+  const destinationCoords = await geocodeAddress(`${destination}, India`) || cityFallbackCoords(destination);
+  const trip = serializeTrip(normalizedPayload, destinationCoords);
   const [pois, hotels, restaurants] = await Promise.all([
     recommendPOIs(trip, destinationCoords),
     recommendHotels(trip),
@@ -87,17 +116,17 @@ async function discoverTripOptions(payload) {
   if (roadRoute) {
     transport.push({
       mode: 'car',
-      summary: `Road route via ${roadRoute.provider || 'maps'} from ${payload.origin} to ${payload.destination}.`,
+      summary: `Road route via ${roadRoute.provider || 'maps'} from ${payload.origin} to ${destination}.`,
       approxDurationHrs: roadRoute.durationMinutes ? roadRoute.durationMinutes / 60 : null,
       approxPriceInr: null,
       distanceKm: roadRoute.distanceKm ?? null,
       isLiveAvailability: false,
-      source: roadRoute.provider === 'geoapify' ? 'geoapify' : 'google_maps',
+      source: roadRoute.provider === 'geoapify' ? 'geoapify' : 'gemini',
     });
   }
 
   const webDiscovery = await discoverWebOptions({
-    destination: payload.destination,
+    destination,
     origin: payload.origin,
     travelStyle: payload.travelStyle,
     budget: payload.budget,

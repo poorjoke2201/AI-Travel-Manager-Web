@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "categories": {
+    "heritage": { "label": "Heritage", "isTouristCandidate": true },
+    "temple_religious": { "label": "Religious", "isTouristCandidate": true },
+    "museum": { "label": "Museum", "isTouristCandidate": true },
+    "nature_viewpoint": { "label": "Nature & viewpoints", "isTouristCandidate": true },
+    "park": { "label": "Park", "isTouristCandidate": true },
+    "beach": { "label": "Beach", "isTouristCandidate": true },
+    "market_shopping": { "label": "Shopping", "isTouristCandidate": true },
+    "entertainment": { "label": "Entertainment", "isTouristCandidate": true },
+    "adventure": { "label": "Adventure", "isTouristCandidate": true },
+    "cafe": { "label": "Cafe", "isTouristCandidate": true },
+    "restaurant": { "label": "Restaurant", "isTouristCandidate": true },
+    "nightlife": { "label": "Nightlife", "isTouristCandidate": true },
+    "wellness": { "label": "Wellness", "isTouristCandidate": true },
+    "transport_hub": { "label": "Transit", "isTouristCandidate": false },
+    "other": { "label": "Other", "isTouristCandidate": false }
+  },
+  "aliases": {
+    "heritage": ["heritage", "fort", "palace", "historic", "monument"],
+    "temple_religious": ["temple", "religious", "spiritual", "church", "mosque", "gurdwara"],
+    "museum": ["museum", "gallery"],
+    "nature_viewpoint": ["nature", "viewpoint", "hill", "lake", "garden", "botanical", "scenic"],
+    "park": ["park", "garden"],
+    "beach": ["beach", "shore", "coast"],
+    "market_shopping": ["market", "bazaar", "shopping", "street"],
+    "entertainment": ["theatre", "show", "amusement", "aquarium"],
+    "adventure": ["adventure", "trek", "rafting", "camping", "wildlife"],
+    "cafe": ["cafe", "coffee", "bakery"],
+    "restaurant": ["restaurant", "dining", "food"],
+    "nightlife": ["nightlife", "bar", "pub", "club"],
+    "wellness": ["spa", "wellness", "yoga", "massage"],
+    "transport_hub": ["station", "airport", "terminal", "hub"],
+    "other": ["other"]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "weights": {
+    "preference": 0.42,
+    "quality": 0.22,
+    "timeFit": 0.18,
+    "social": 0.10,
+    "penalty": 0.20
+  },
+  "pace": {
+    "relaxed": 3,
+    "balanced": 5,
+    "packed": 7
+  },
+  "mealWindows": {
+    "breakfast": 480,
+    "lunch": 750,
+    "dinner": 1170
+  },
+  "travelBufferMinutes": 15,
+  "maxDailyTravelMinutes": 480,
+  "defaultVisitMinutes": 90
+}

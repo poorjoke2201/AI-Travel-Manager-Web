@@ -89,7 +89,6 @@ function mapPoiRow(row) {
 
     weeklyOff: toCleanStringOrNull(row.weekly_off),
     hasAirportNearby: toBooleanOrNull(row.has_airport_nearby),
-    dslrAllowed: toBooleanOrNull(row.dslr_allowed),
     bestTimeToVisit: toCleanStringOrNull(row.best_time_to_visit),
     indoorOutdoor: (() => {
       const v = toCleanStringOrNull(row.indoor_outdoor);
@@ -162,12 +161,166 @@ function mapRestaurantRow(row) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Overture enrichment merging
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal RFC-4180 CSV line parser — handles double-quoted fields with
+ * embedded commas and escaped quotes (""). Used only for the small
+ * enrichment CSVs (osm_enrichment.csv, wikidata_enrichment.csv) which
+ * are read synchronously at startup.
+ */
+function parseCsvLine(line) {
+  const fields = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      fields.push(current.trim()); current = '';
+    } else {
+      current += ch;
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+/**
+ * Loads osm_enrichment.csv and wikidata_enrichment.csv (if they exist) and
+ * returns a Map keyed by source_id (Overture UUID) -> merged enrichment object.
+ */
+function loadEnrichmentMaps() {
+  const osmPath  = path.join(DATA_DIR, 'osm_enrichment.csv');
+  const wdPath   = path.join(DATA_DIR, 'wikidata_enrichment.csv');
+  const bySource = new Map();
+
+  const readSync = (filePath) => {
+    if (!fs.existsSync(filePath)) return [];
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines   = content.split(/\r?\n/).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = parseCsvLine(lines[0]);
+    return lines.slice(1).map((line) => {
+      const values = parseCsvLine(line);
+      return Object.fromEntries(headers.map((h, i) => [h, (values[i] || '').trim()]));
+    });
+  };
+
+  for (const row of readSync(osmPath)) {
+    const key = row.source_id;
+    if (!key) continue;
+    bySource.set(key, { ...bySource.get(key), ...row });
+  }
+  for (const row of readSync(wdPath)) {
+    const key = row.source_id;
+    if (!key) continue;
+    bySource.set(key, { ...bySource.get(key), ...row });
+  }
+  return bySource;
+}
+
+function mapOverturePoiRow(row, enrichmentMap) {
+  // poi_id for Overture rows is "OV-NNNN" — not a plain number.
+  // Use a hash of the source_id (Overture UUID) as the numeric sourceId
+  // so the upsert key stays a Number (matching the schema).
+  const sourceRef = toCleanStringOrNull(row.source_id);
+  if (!sourceRef) return null;
+
+  let hash = 0;
+  for (const ch of sourceRef) hash = ((hash << 5) - hash + ch.charCodeAt(0)) | 0;
+  const sourceId = Math.abs(hash) || 1;
+
+  const lat = toNumberOrNull(row.latitude);
+  const lng = toNumberOrNull(row.longitude);
+  const location = toGeoPointOrNull(row.latitude, row.longitude);
+
+  // Merge enrichment data (OSM + Wikidata) on top of CSV row
+  const enrich = enrichmentMap.get(sourceRef) || {};
+
+  const openingTime  = toCleanStringOrNull(enrich.opening_time  || row.opening_time);
+  const closingTime  = toCleanStringOrNull(enrich.closing_time  || row.closing_time);
+  const weeklyOff    = toCleanStringOrNull(enrich.weekly_off    || row.weekly_off);
+  const website      = toCleanStringOrNull(enrich.website       || row.website);
+  const description  = toCleanStringOrNull(enrich.description   || row.description);
+  const significance = toCleanStringOrNull(enrich.significance  || row.significance);
+  const estYear      = toCleanStringOrNull(enrich.establishment_year || row.establishment_year);
+  const wikidataId   = toCleanStringOrNull(enrich.wikidata);
+  const wikipedia    = toCleanStringOrNull(enrich.wikipedia);
+  const sitelinkCount = toNumberOrNull(enrich.sitelink_count);
+
+  // entry_fee_inr: prefer OSM, then CSV prior (0 = free, '' = unknown)
+  const feeRaw = enrich.entry_fee_inr !== undefined ? enrich.entry_fee_inr : row.entry_fee_inr;
+  const entryFeeInr = toNumberOrNull(feeRaw);
+
+  // Build enrichment provenance object
+  const enrichmentMeta = {};
+  if (openingTime)  enrichmentMeta.opening_hours  = { value: `${openingTime}-${closingTime}`, source: enrich.opening_time ? 'osm' : 'category_prior', confidence: enrich.opening_time ? 0.8 : 0.4 };
+  if (entryFeeInr !== null) enrichmentMeta.entry_fee = { value: entryFeeInr, source: enrich.entry_fee_inr !== undefined ? 'osm' : 'category_prior', confidence: enrich.entry_fee_inr !== undefined ? 0.85 : 0.5 };
+  if (significance) enrichmentMeta.significance   = { value: significance, source: enrich.significance ? (enrich.qid ? 'wikidata' : 'osm') : 'category_prior', confidence: enrich.qid ? 0.9 : 0.6 };
+  if (description)  enrichmentMeta.description    = { value: 'present', source: enrich.description ? 'osm' : 'gemini_pending', confidence: 0.7 };
+
+  return {
+    sourceId,
+    name: toCleanStringOrNull(row.name) || `Unnamed POI ${sourceId}`,
+    city: toTitleCaseOrNull(row.city),
+    state: toTitleCaseOrNull(row.state),
+    zone: toCleanStringOrNull(row.zone),
+    country: 'India',
+    address: toCleanStringOrNull(row.address),
+    latitude: lat,
+    longitude: lng,
+    ...(location ? { location } : {}),
+    category: toCleanStringOrNull(row.category),
+    poiType: toCleanStringOrNull(row.poi_type),
+    significance,
+    tags: toArrayOrEmpty(row.tags, '|'),
+    entryFeeInr,
+    visitDurationHrs: toNumberOrNull(row.visit_duration_hrs),
+    googleRating: null,
+    reviewCountLakhs: null,
+    weeklyOff,
+    hasAirportNearby: (() => { const v = toCleanStringOrNull(row.has_airport_nearby); return v ? ['true', 'yes', '1'].includes(v.toLowerCase()) : null; })(),
+    bestTimeToVisit: toCleanStringOrNull(row.best_time_to_visit),
+    indoorOutdoor: (() => { const v = toCleanStringOrNull(row.indoor_outdoor); return v ? v.toLowerCase() : null; })(),
+    openingTime,
+    closingTime,
+    establishmentYear: estYear,
+    description,
+    website,
+    wikipedia,
+    wikidataId,
+    source: 'overture',
+    sourceRef,
+    lastUpdated: (() => { const v = toCleanStringOrNull(row.last_updated); const d = v ? new Date(v) : null; return d && !Number.isNaN(d.getTime()) ? d : null; })(),
+    // Overture-specific
+    tier: toCleanStringOrNull(row.tier) || 'C',
+    confidence: toNumberOrNull(row.confidence),
+    sourceCount: toNumberOrNull(row.source_count),
+    popularityScore: sitelinkCount,
+    enrichment: enrichmentMeta,
+  };
+}
+
 const DATASET_CONFIG = {
   pois: {
     file: 'master_pois.csv',
     model: POI,
     mapRow: mapPoiRow,
     label: 'POIs',
+  },
+  overture_pois: {
+    file: 'pois_overture.csv',
+    model: POI,
+    mapRow: null, // set dynamically after loading enrichment maps
+    label: 'Overture POIs',
   },
   hotels: {
     file: 'master_hotels.csv',
@@ -269,6 +422,13 @@ function emptyStats() {
 async function main() {
   const requested = process.argv.slice(2);
   const keys = requested.length ? requested : Object.keys(DATASET_CONFIG);
+
+  // Wire up the Overture row mapper with enrichment data loaded once
+  if (keys.includes('overture_pois')) {
+    const enrichmentMap = loadEnrichmentMaps();
+    logger.info(`Enrichment map loaded: ${enrichmentMap.size} source IDs with OSM/Wikidata data`);
+    DATASET_CONFIG.overture_pois.mapRow = (row) => mapOverturePoiRow(row, enrichmentMap);
+  }
 
   const invalid = keys.filter((k) => !DATASET_CONFIG[k]);
   if (invalid.length) {

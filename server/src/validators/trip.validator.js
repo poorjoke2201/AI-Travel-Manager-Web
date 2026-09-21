@@ -28,10 +28,43 @@ const baseTripSchema = z.object({
   pace: z.enum(PACE_OPTIONS).default('balanced'),
   accommodationPreference: z.enum(ACCOMMODATION_PREFERENCES).default('any'),
   dailyTravelToleranceKm: z.number().positive().nullable().optional(),
-  selectedHotelId: z.string().regex(/^[a-f0-9]{24}$/i).nullable().optional(),
+  selectedHotelId: z.string().min(1).nullable().optional(),
   selectedTransportMode: z.enum(['flight', 'train', 'bus', 'car', 'bike']).nullable().optional(),
+  selectedPlaces: z
+    .array(
+      z.object({
+        refId: z.string().min(1),
+        type: z.enum(['poi', 'hotel', 'restaurant']),
+        name: z.string().min(1),
+        source: z.enum(['dataset', 'geoapify', 'gemini', 'overture', 'overpass', 'web-discovery']).default('dataset').optional(),
+      })
+    )
+    .default([]),
+  discoveredCandidates: z.object({
+    places: z.array(z.record(z.any())).default([]),
+    stays: z.array(z.record(z.any())).default([]),
+    restaurants: z.array(z.record(z.any())).default([]),
+  }).optional(),
 
   isPublic: z.boolean().default(false),
+  isGroupTrip: z.boolean().default(false),
+  inviteCode: z.string().trim().min(4).max(12).nullable().optional(),
+  groupMembers: z
+    .array(
+      z.union([
+        z.string().trim().min(7),
+        z.object({
+          userId: z.string().regex(/^[a-f0-9]{24}$/i).nullable().optional(),
+          phoneNumber: z.string().trim().min(7).nullable().optional(),
+          name: z.string().trim().max(80).nullable().optional(),
+          email: z.string().email().nullable().optional(),
+          role: z.enum(['owner', 'admin', 'member']).default('member'),
+          status: z.enum(['accepted', 'pending', 'invited']).default('pending'),
+          joinedAt: z.string().datetime({ offset: true }).nullable().optional(),
+        }),
+      ])
+    )
+    .default([]),
 });
 
 // Only checks order when both dates are actually present, so it also works

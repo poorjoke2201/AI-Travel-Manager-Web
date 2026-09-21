@@ -6,6 +6,7 @@ const DEFAULT_VISIT_DURATION_MINS = 90;
 const DAY_START_MINUTES = 9 * 60; // 09:00
 const LUNCH_WINDOW = [12 * 60, 14 * 60];
 const DINNER_WINDOW = [19 * 60, 21 * 60];
+const BREAKFAST_TIME = 8 * 60;
 
 function minutesToTime(mins) {
   const h = Math.floor(mins / 60) % 24;
@@ -17,6 +18,22 @@ function addDays(dateStr, n) {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
+}
+
+function parseTime(value) {
+  if (!value || !/^\d{1,2}:\d{2}$/.test(value)) return null;
+  const [hours, minutes] = value.split(':').map(Number);
+  return hours <= 23 && minutes <= 59 ? hours * 60 + minutes : null;
+}
+
+function isOpenForVisit(activity, date, startMinutes, durationMins) {
+  if (activity.weeklyOff) {
+    const dayName = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    if (activity.weeklyOff.toLowerCase().includes(dayName.toLowerCase())) return false;
+  }
+  const opening = parseTime(activity.openingTime);
+  const closing = parseTime(activity.closingTime);
+  return (opening == null || startMinutes >= opening) && (closing == null || startMinutes + durationMins <= closing);
 }
 
 /**
@@ -40,26 +57,32 @@ function buildDeterministicItinerary(trip, { pois, hotels, restaurants }) {
   const usedRestaurantIds = new Set();
 
   const days = clusters.map((clusterPois, dayIdx) => {
-    const capped = clusterPois.slice(0, maxPerDay);
+    const rankedCluster = [...clusterPois].sort((a, b) => (b.preferenceScore || 0) - (a.preferenceScore || 0));
+    const capped = rankedCluster.filter((poi) => isOpenForVisit(poi, addDays(trip.startDate, dayIdx), DAY_START_MINUTES, poi.visitDurationHrs ? Math.round(poi.visitDurationHrs * 60) : DEFAULT_VISIT_DURATION_MINS)).slice(0, maxPerDay);
     const sequenced = sequenceDayPOIs(capped, startPoint);
 
     const activities = [];
     let clockMinutes = DAY_START_MINUTES;
-    let lunchPlaced = false;
-    let dinnerPlaced = false;
+    const meals = [];
+
+    if (dayIdx > 0) {
+      const breakfast = pickRestaurant(startPoint, restaurants, usedRestaurantIds);
+      if (breakfast) {
+        usedRestaurantIds.add(breakfast.id);
+        meals.push(restaurantActivity(breakfast, BREAKFAST_TIME, 'breakfast'));
+      }
+    }
 
     sequenced.forEach((poi) => {
       const durationMins = poi.visitDurationHrs ? Math.round(poi.visitDurationHrs * 60) : DEFAULT_VISIT_DURATION_MINS;
 
-      // Slot lunch if we've crossed into the lunch window and haven't placed it yet.
-      if (!lunchPlaced && clockMinutes >= LUNCH_WINDOW[0] && clockMinutes <= LUNCH_WINDOW[1]) {
+      if (clockMinutes >= LUNCH_WINDOW[0] && clockMinutes <= LUNCH_WINDOW[1]) {
         const lastPoint = poi.latitude != null ? { lat: poi.latitude, lng: poi.longitude } : startPoint;
         const restaurant = pickRestaurant(lastPoint, restaurants, usedRestaurantIds);
         if (restaurant) {
           usedRestaurantIds.add(restaurant.id);
-          activities.push(restaurantActivity(restaurant, clockMinutes));
+          meals.push(restaurantActivity(restaurant, Math.max(clockMinutes, 12 * 60 + 30), 'lunch'));
           clockMinutes += 60;
-          lunchPlaced = true;
         }
       }
 
@@ -67,18 +90,20 @@ function buildDeterministicItinerary(trip, { pois, hotels, restaurants }) {
       clockMinutes += durationMins + 20; // 20 min buffer for travel between stops
     });
 
-    if (!dinnerPlaced) {
-      const lastPoint =
-        sequenced.length && sequenced[sequenced.length - 1].latitude != null
-          ? { lat: sequenced[sequenced.length - 1].latitude, lng: sequenced[sequenced.length - 1].longitude }
-          : startPoint;
-      const restaurant = pickRestaurant(lastPoint, restaurants, usedRestaurantIds);
-      if (restaurant) {
-        usedRestaurantIds.add(restaurant.id);
-        const dinnerTime = Math.max(clockMinutes, DINNER_WINDOW[0]);
-        activities.push(restaurantActivity(restaurant, dinnerTime));
-        dinnerPlaced = true;
+    const lastPoint = sequenced.length && sequenced[sequenced.length - 1].latitude != null
+      ? { lat: sequenced[sequenced.length - 1].latitude, lng: sequenced[sequenced.length - 1].longitude }
+      : startPoint;
+    if (!meals.some((meal) => meal.mealType === 'lunch')) {
+      const lunch = pickRestaurant(lastPoint, restaurants, usedRestaurantIds);
+      if (lunch) {
+        usedRestaurantIds.add(lunch.id);
+        meals.push(restaurantActivity(lunch, 12 * 60 + 30, 'lunch'));
       }
+    }
+    const dinner = pickRestaurant(lastPoint, restaurants, usedRestaurantIds);
+    if (dinner) {
+      usedRestaurantIds.add(dinner.id);
+      meals.push(restaurantActivity(dinner, Math.max(clockMinutes, DINNER_WINDOW[0]), 'dinner'));
     }
 
     return {
@@ -88,7 +113,7 @@ function buildDeterministicItinerary(trip, { pois, hotels, restaurants }) {
         ? `Exploring ${capped.length} destination${capped.length > 1 ? 's' : ''} in ${trip.destination}.`
         : `Flexible day in ${trip.destination}.`,
       weatherContext: null,
-      activities,
+      activities: [...activities, ...meals].sort((a, b) => (parseTime(a.startTime) ?? 0) - (parseTime(b.startTime) ?? 0)),
     };
   });
 
@@ -103,9 +128,7 @@ function buildDeterministicItinerary(trip, { pois, hotels, restaurants }) {
  */
 function pickRestaurant(point, restaurants, usedRestaurantIds) {
   if (!restaurants.length) return null;
-  const fresh = findNearestRestaurant(point, restaurants, usedRestaurantIds);
-  if (fresh) return fresh;
-  return findNearestRestaurant(point, restaurants, new Set());
+  return findNearestRestaurant(point, restaurants, usedRestaurantIds);
 }
 
 function poiActivity(poi, startMinutes, durationMins) {
@@ -117,6 +140,8 @@ function poiActivity(poi, startMinutes, durationMins) {
     duration: durationMins,
     notes: poi.source === 'gemini' ? 'AI-suggested addition' : null,
     description: poi.description || null,
+    category: poi.category || poi.poiType || 'point of interest',
+    poiType: poi.poiType || null,
     website: poi.website || null,
     phone: poi.phone || null,
     imageUrl: poi.imageUrl || null,
@@ -126,14 +151,18 @@ function poiActivity(poi, startMinutes, durationMins) {
   };
 }
 
-function restaurantActivity(restaurant, startMinutes) {
+function restaurantActivity(restaurant, startMinutes, mealType = null) {
   return {
     type: 'restaurant',
-    refId: restaurant.source === 'dataset' ? restaurant.id : null,
+    refId: restaurant.source === 'gemini' ? null : restaurant.id,
     name: restaurant.name,
     startTime: minutesToTime(startMinutes),
     duration: 60,
     notes: restaurant.cuisine ? `Cuisine: ${restaurant.cuisine.join(', ')}` : null,
+    category: restaurant.category || 'restaurant',
+    mealType,
+    openingTime: restaurant.openingTime || null,
+    closingTime: restaurant.closingTime || null,
     description: restaurant.description || null,
     website: restaurant.website || null,
     phone: restaurant.phone || null,
@@ -142,4 +171,4 @@ function restaurantActivity(restaurant, startMinutes) {
   };
 }
 
-module.exports = { buildDeterministicItinerary };
+module.exports = { buildDeterministicItinerary, isOpenForVisit };

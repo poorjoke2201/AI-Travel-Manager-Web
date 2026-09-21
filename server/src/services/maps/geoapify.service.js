@@ -15,7 +15,7 @@ const placesClient = axios.create({
 /**
  * Geocodes a free-text query using Geoapify.
  * Returns { lat, lng, formattedAddress } or null on any failure.
- * Used as the fallback when Google Maps geocoding is unavailable.
+ * This is the application's canonical geocoding fallback layer.
  */
 async function geoapifyGeocode(query) {
   if (!env.geoapifyGeocodingApiKey || env.geoapifyGeocodingApiKey.startsWith('<')) return null;

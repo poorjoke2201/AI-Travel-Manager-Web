@@ -4,7 +4,8 @@ const expenseSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     tripId: { type: mongoose.Schema.Types.ObjectId, ref: 'Trip', required: true, index: true },
-    amount: { type: Number, required: true, min: 0.01 },
+    payerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    amount: { type: Number, required: true, min: 1 },
     category: {
       type: String,
       enum: ['transport', 'accommodation', 'food', 'activities', 'shopping', 'miscellaneous'],
@@ -14,6 +15,13 @@ const expenseSchema = new mongoose.Schema(
     date: { type: Date, required: true },
     paymentMethod: { type: String, trim: true, maxlength: 40, default: null },
     itineraryItemId: { type: String, default: null },
+    isGroupExpense: { type: Boolean, default: false, index: true },
+    splitType: { type: String, enum: ['equal', 'custom', 'percentage'], default: 'equal' },
+    participants: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+    customAmounts: { type: Object, default: {} },
+    percentages: { type: Object, default: {} },
+    billImage: { type: String, default: null },
+    settledAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

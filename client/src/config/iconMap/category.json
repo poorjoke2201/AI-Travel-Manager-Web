@@ -1,0 +1,14 @@
+{
+  "heritage": { "key": "heritage_general", "group": "Heritage & culture", "color": "#B45309" },
+  "religious": { "key": "religious_general", "group": "Religious", "color": "#7C3AED" },
+  "nature": { "key": "nature_general", "group": "Nature & outdoors", "color": "#15803D" },
+  "adventure": { "key": "adventure", "group": "Adventure & activity", "color": "#EA580C" },
+  "food": { "key": "restaurant", "group": "Food & drink", "color": "#DC2626" },
+  "shopping": { "key": "market_bazaar", "group": "Shopping & markets", "color": "#DB2777" },
+  "entertainment": { "key": "entertainment", "group": "Entertainment & nightlife", "color": "#4F46E5" },
+  "wellness": { "key": "wellness", "group": "Wellness", "color": "#0D9488" },
+  "transport": { "key": "railway", "group": "Transport", "color": "#475569" },
+  "hotel": { "key": "hotel", "group": "Stay & trip anchors", "color": "#1D4ED8" },
+  "start": { "key": "start", "group": "Stay & trip anchors", "color": "#1D4ED8" },
+  "end": { "key": "end", "group": "Stay & trip anchors", "color": "#1D4ED8" }
+}

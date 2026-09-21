@@ -35,7 +35,7 @@ async function recommendRestaurants(trip) {
     .map(({ r }) => r)
     .slice(0, TOP_N_RETURNED);
 
-  const toGeocode = ranked.slice(0, GEOCODE_TOP_N).map((r) => ({
+  const toGeocode = ranked.filter((r) => !(typeof r.latitude === 'number' && typeof r.longitude === 'number')).slice(0, GEOCODE_TOP_N).map((r) => ({
     _id: r._id,
     name: r.name,
     city: r.city,
@@ -54,6 +54,7 @@ async function recommendRestaurants(trip) {
     return {
       id: String(r._id),
       name: r.name,
+      city: r.city,
       area: r.area,
       cuisine: r.cuisine,
       rating: r.rating,

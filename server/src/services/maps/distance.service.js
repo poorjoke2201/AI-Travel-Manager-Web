@@ -4,9 +4,9 @@ const logger = require('../../utils/logger');
 
 /**
  * Higher-level distance API used by recommendation/itinerary code so those
- * layers never need to know whether Google Maps is available. Implements
- * the fallback philosophy from spec section 47: try real road distance,
- * silently degrade to Haversine if Maps fails or is disabled.
+ * layers never need to know which provider is active. It tries a real
+ * road-distance lookup first, then quietly falls back to Haversine if the
+ * route provider is unavailable or disabled.
  *
  * `useRoadDistance` is deliberately opt-in and capped - road distance calls
  * cost API quota, so callers should only request it for the small,

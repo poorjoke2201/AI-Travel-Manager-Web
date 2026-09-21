@@ -98,6 +98,15 @@ async function replaceItineraryActivity(req, res, next) {
   }
 }
 
+async function acceptTripInvite(req, res, next) {
+  try {
+    const trip = await tripService.acceptTripInvite(req.params.id, req.userId);
+    res.status(200).json({ success: true, data: trip });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createTrip,
   discoverOptions,
@@ -108,4 +117,5 @@ module.exports = {
   updateTrip,
   deleteTrip,
   replaceItineraryActivity,
+  acceptTripInvite,
 };

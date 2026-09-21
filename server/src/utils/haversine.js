@@ -1,7 +1,7 @@
 /**
  * Cheap geographic ("as the crow flies") distance calculations.
  * This is intentionally separate from server/src/services/maps/routing.service.js,
- * which uses Google Maps for actual road travel distance/time. Never conflate
+ * which uses the live route provider for road travel distance/time. Never conflate
  * the two - haversine is for ranking/clustering, routing is for real ETAs.
  */
 

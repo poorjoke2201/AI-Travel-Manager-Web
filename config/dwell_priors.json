@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "defaults": {
+    "minMinutes": 45,
+    "typicalMinutes": 90,
+    "maxMinutes": 180
+  },
+  "byCategory": {
+    "heritage": { "min": 60, "typical": 120, "max": 180 },
+    "temple_religious": { "min": 45, "typical": 90, "max": 150 },
+    "museum": { "min": 60, "typical": 120, "max": 180 },
+    "nature_viewpoint": { "min": 60, "typical": 120, "max": 180 },
+    "park": { "min": 45, "typical": 90, "max": 150 },
+    "beach": { "min": 90, "typical": 150, "max": 240 },
+    "market_shopping": { "min": 45, "typical": 90, "max": 150 },
+    "entertainment": { "min": 60, "typical": 120, "max": 180 },
+    "adventure": { "min": 90, "typical": 150, "max": 240 },
+    "cafe": { "min": 30, "typical": 60, "max": 90 },
+    "restaurant": { "min": 45, "typical": 75, "max": 120 },
+    "nightlife": { "min": 60, "typical": 120, "max": 180 },
+    "wellness": { "min": 60, "typical": 120, "max": 180 },
+    "transport_hub": { "min": 20, "typical": 45, "max": 60 },
+    "other": { "min": 30, "typical": 60, "max": 120 }
+  }
+}

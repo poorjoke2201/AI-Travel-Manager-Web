@@ -1,38 +1,47 @@
 import L from 'leaflet';
+import { resolveIcon } from '../mapIcons/resolveIcon';
 
 const COLORS = {
-  poi: '#2B3A67', // indigo
-  hotel: '#E8A33D', // marigold
-  restaurant: '#C1502E', // clay
-  destination: '#3D8577', // teal
+  poi: '#2B3A67',
+  hotel: '#E8A33D',
+  restaurant: '#C1502E',
+  destination: '#3D8577',
+  start: '#0F766E',
+  end: '#7C2D12',
+  generic: '#6B7280',
 };
 
-/**
- * Builds a small circular divIcon instead of relying on Leaflet's default
- * marker PNGs, which require extra bundler config to resolve correctly
- * under Vite. Colors map to the app's Tailwind design tokens so map markers
- * feel consistent with the rest of the UI (indigo=POI, marigold=hotel,
- * clay=restaurant, teal=searched destination).
- */
-export function createMarkerIcon(type = 'poi', order = null) {
-  const color = COLORS[type] || COLORS.poi;
-  const label = order != null ? String(order) : '';
-  return L.divIcon({
-    className: 'travel-manager-marker',
-    html: `<span style="
-      display:flex;align-items:center;justify-content:center;
-      width:24px;height:24px;border-radius:50%;
-      background:${color};border:2px solid white;
-      box-shadow:0 1px 4px rgba(0,0,0,0.4);
-      color:white;font-size:11px;font-weight:700;line-height:1;
-    ">${label}</span>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-    popupAnchor: [0, -12],
-  });
+const markerCache = new Map();
+
+function makeBodyHtml(color, label = '', selected = false, dimmed = false, badgeColor = '#111827') {
+  const size = selected ? 30 : 24;
+  const opacity = dimmed ? 0.45 : 1;
+  const displayLabel = label || '•';
+  return `
+    <div class="travel-pin ${selected ? 'travel-pin--selected' : ''} ${dimmed ? 'travel-pin--dimmed' : ''}" style="--travel-pin-color:${color}; --travel-badge-color:${badgeColor};">
+      <span class="travel-pin__body" style="width:${size}px;height:${size}px;opacity:${opacity};">${displayLabel}</span>
+    </div>
+  `;
 }
 
-/** India-centered default view for the Explore page before any search (spec section 29). */
+export function createMarkerIcon(type = 'poi', order = null, { selected = false, dimmed = false, poi = null, badge = null, badgeColor = '#111827' } = {}) {
+  const resolved = poi ? resolveIcon(poi) : { color: COLORS[type] || COLORS.poi, iconKey: type };
+  const color = resolved.color || COLORS[type] || COLORS.poi;
+  const label = badge != null ? String(badge) : order != null ? String(order) : '';
+  const key = `${resolved.iconKey || type}|${label}|${selected ? 'selected' : 'normal'}|${dimmed ? 'dimmed' : 'plain'}|${badgeColor}`;
+  if (markerCache.has(key)) return markerCache.get(key);
+
+  const icon = L.divIcon({
+    className: 'travel-manager-marker',
+    html: makeBodyHtml(color, label, selected, dimmed, badgeColor),
+    iconSize: [selected ? 32 : 26, selected ? 40 : 34],
+    iconAnchor: [selected ? 16 : 13, selected ? 40 : 34],
+    popupAnchor: [0, -26],
+  });
+  markerCache.set(key, icon);
+  return icon;
+}
+
 export const INDIA_CENTER = { lat: 22.3511148, lng: 78.6677428 };
 export const INDIA_DEFAULT_ZOOM = 5;
 

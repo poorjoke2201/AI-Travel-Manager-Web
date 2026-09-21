@@ -9,7 +9,7 @@ const path = require('path');
 // process managers do not change which environment file gets loaded.
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
-const REQUIRED_IN_PRODUCTION = ['MONGO_URI', 'JWT_SECRET', 'GEMINI_API_KEY', 'GOOGLE_MAPS_API_KEY'];
+const REQUIRED_IN_PRODUCTION = ['MONGO_URI', 'JWT_SECRET', 'GEMINI_API_KEY'];
 
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -24,7 +24,8 @@ const env = {
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
 
-  googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
+  locationIqApiKey: process.env.LOCATIONIQ_API_KEY || '',
+  locationIqBaseUrl: process.env.LOCATIONIQ_BASE_URL || 'https://us1.locationiq.com/v1',
   geoapifyPlacesApiKey: process.env.GEOAPIFY_PLACES_API_KEY || '',
   geoapifyPlaceDetailsApiKey: process.env.GEOAPIFY_PLACE_DETAILS_API_KEY || '',
   geoapifyGeocodingApiKey: process.env.GEOAPIFY_GEOCODING_API_KEY || '',

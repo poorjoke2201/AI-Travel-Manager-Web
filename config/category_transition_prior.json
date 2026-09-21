@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "matrix": {
+    "heritage": { "heritage": 0.18, "museum": 0.16, "cafe": 0.14, "restaurant": 0.12, "nature_viewpoint": 0.1, "park": 0.08, "market_shopping": 0.04, "temple_religious": 0.1 },
+    "museum": { "museum": 0.16, "heritage": 0.16, "cafe": 0.15, "restaurant": 0.12, "park": 0.08, "nature_viewpoint": 0.08 },
+    "nature_viewpoint": { "nature_viewpoint": 0.18, "beach": 0.16, "park": 0.12, "heritage": 0.08, "restaurant": 0.1, "cafe": 0.12 },
+    "beach": { "beach": 0.18, "nature_viewpoint": 0.15, "restaurant": 0.12, "cafe": 0.12, "market_shopping": 0.06 },
+    "park": { "park": 0.15, "nature_viewpoint": 0.14, "cafe": 0.12, "restaurant": 0.1, "heritage": 0.08 },
+    "temple_religious": { "temple_religious": 0.14, "heritage": 0.14, "market_shopping": 0.08, "cafe": 0.1, "restaurant": 0.12 },
+    "market_shopping": { "market_shopping": 0.12, "restaurant": 0.18, "cafe": 0.16, "heritage": 0.08, "nightlife": 0.08 },
+    "restaurant": { "restaurant": 0.08, "cafe": 0.16, "market_shopping": 0.14, "heritage": 0.08, "nightlife": 0.08 },
+    "cafe": { "cafe": 0.12, "restaurant": 0.14, "park": 0.09, "market_shopping": 0.12, "heritage": 0.08 },
+    "nightlife": { "nightlife": 0.12, "restaurant": 0.16, "cafe": 0.12, "market_shopping": 0.08 },
+    "wellness": { "wellness": 0.1, "park": 0.12, "restaurant": 0.08, "nature_viewpoint": 0.1 },
+    "entertainment": { "entertainment": 0.12, "restaurant": 0.14, "nightlife": 0.12, "cafe": 0.1 },
+    "adventure": { "adventure": 0.15, "nature_viewpoint": 0.14, "beach": 0.12, "park": 0.08, "restaurant": 0.08 },
+    "other": { "other": 0.06, "restaurant": 0.08, "cafe": 0.08 }
+  }
+}

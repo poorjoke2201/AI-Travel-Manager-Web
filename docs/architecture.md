@@ -5,8 +5,8 @@ flowchart TD
   Browser[React + Vite + Leaflet] --> API[Express API]
   API --> Mongo[(MongoDB)]
   API --> Gemini[Gemini]
-  API --> Maps[Google Maps]
-  API --> Geoapify[Geoapify fallback]
+  API --> Geoapify[Geoapify]
+  API --> LocationIQ[LocationIQ fallback]
   Browser --> OSM[OpenStreetMap tiles]
 ```
 
@@ -22,7 +22,8 @@ provider calls remain on the server.
    is validated before persistence.
 4. Invalid or unavailable AI output falls back to deterministic itinerary
    generation; Gemini calls can fall through to Hugging Face when configured.
-5. Google route geometry is used first, with Geoapify routing as fallback.
+5. Geoapify route geometry is used first, with LocationIQ and city fallback
+   providing stability when the live route layer is unavailable.
 6. Private trip reads and mutations enforce ownership. Public trips use the
    separate read-only public endpoint.
 

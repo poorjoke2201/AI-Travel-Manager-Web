@@ -1,0 +1,14 @@
+{
+  "phase": "Q0-baseline",
+  "strategy": "legacy-city-regex",
+  "notes": "Code-level baseline before the canonical city variant query was exported and validated.",
+  "city_variants": [
+    "Mysore",
+    "Mysuru",
+    "Bengaluru",
+    "Bangalore"
+  ],
+  "recall_risk": "high",
+  "expected_issue": "The legacy path was vulnerable to city string drift and missed valid records when aliases differed from the canonical string.",
+  "status": "captured"
+}

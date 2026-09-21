@@ -1,9 +1,26 @@
-const { callGoogleMaps } = require('./googleMaps.service');
+const axios = require('axios');
 const { geoapifyGeocode } = require('./geoapify.service');
+const { env } = require('../../config/env');
 const logger = require('../../utils/logger');
 
-// Static city-center coordinates used as fallback when Google Maps geocoding
-// is unavailable (billing disabled, quota exceeded, etc.).
+async function locationIqGeocode(query) {
+  if (!env.locationIqApiKey || !query?.trim()) return null;
+  try {
+    const { data } = await axios.get(`${env.locationIqBaseUrl}/search.php`, {
+      params: { key: env.locationIqApiKey, q: query, format: 'json', limit: 1, countrycodes: 'in' },
+      headers: { 'User-Agent': 'TravelManagerApp/1.0' },
+      timeout: 8000,
+    });
+    const result = Array.isArray(data) ? data[0] : null;
+    if (!result) return null;
+    return { lat: Number(result.lat), lng: Number(result.lon), formattedAddress: result.display_name };
+  } catch (err) {
+    logger.warn(`LocationIQ geocode failed for "${query}"`, err.message);
+    return null;
+  }
+}
+// Static city-center coordinates used as the final fallback when all live
+// providers are unavailable or rate-limited.
 const CITY_COORDS = {
   'agra': { lat: 27.1767, lng: 78.0081 }, 'ahmedabad': { lat: 23.0225, lng: 72.5714 },
   'ajmer': { lat: 26.4499, lng: 74.6399 }, 'allahabad': { lat: 25.4358, lng: 81.8463 },
@@ -58,25 +75,22 @@ function cityFallbackCoords(city) {
 async function geocodeAddress(query) {
   if (!query || !query.trim()) return null;
 
-  // 1. Try Google Maps
-  try {
-    const data = await callGoogleMaps('geocode/json', { address: query });
-    const result = data.results && data.results[0];
-    if (result) {
-      const { lat, lng } = result.geometry.location;
-      return { lat, lng, formattedAddress: result.formatted_address };
-    }
-  } catch (err) {
-    logger.warn(`Google Maps geocode failed for "${query}", trying Geoapify`, err.message);
-  }
-
-  // 2. Try Geoapify
+  // Geoapify is the preferred geocoder in this app; LocationIQ is retained as
+  // the secondary source because it is sometimes stronger for Indian roads and
+  // locality names.
   const geoapifyResult = await geoapifyGeocode(query);
   if (geoapifyResult) return geoapifyResult;
 
-  // 3. Static city-center fallback
+  const locationIqResult = await locationIqGeocode(query);
+  if (locationIqResult) return locationIqResult;
+
+  // Static city-center fallback
   const cityName = query.replace(/,.*$/, '').trim(); // strip ", India" suffix etc.
   return cityFallbackCoords(cityName);
+}
+
+function getGeocodeProviderOrder() {
+  return ['geoapify', 'locationiq', 'cityFallback'];
 }
 
 /**
@@ -106,4 +120,4 @@ async function geocodeCandidates(candidates, { maxCandidates = 15 } = {}) {
   return results;
 }
 
-module.exports = { geocodeAddress, geocodeCandidates, cityFallbackCoords };
+module.exports = { geocodeAddress, geocodeCandidates, cityFallbackCoords, getGeocodeProviderOrder };

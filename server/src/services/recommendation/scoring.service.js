@@ -12,6 +12,45 @@ function normalizeRating(rating, max = 5) {
   return Math.max(0, Math.min(1, rating / max));
 }
 
+function normalizePopularity(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(1, value));
+}
+
+function candidateQualityScore(candidate = {}) {
+  const signals = [];
+  const popularity = normalizePopularity(candidate.popularityScore ?? candidate.popularityProxy);
+  if (popularity != null) signals.push({ weight: 0.35, value: popularity });
+
+  if (typeof candidate.googleRating === 'number') {
+    signals.push({ weight: 0.25, value: normalizeRating(candidate.googleRating) });
+  } else if (typeof candidate.rating === 'number') {
+    signals.push({ weight: 0.25, value: normalizeRating(candidate.rating) });
+  }
+
+  if (typeof candidate.reviewCountLakhs === 'number') {
+    signals.push({ weight: 0.15, value: Math.min(1, Math.log10(Math.max(1, candidate.reviewCountLakhs * 100000)) / 6) });
+  }
+  if (typeof candidate.confidence === 'number') signals.push({ weight: 0.1, value: normalizePopularity(candidate.confidence) });
+  if (typeof candidate.sourceCount === 'number') signals.push({ weight: 0.1, value: Math.min(1, candidate.sourceCount / 3) });
+  if (candidate.wikidataId || candidate.wikipedia || candidate.website) signals.push({ weight: 0.05, value: 1 });
+
+  if (!signals.length) return 0.5;
+  const totalWeight = signals.reduce((sum, signal) => sum + signal.weight, 0);
+  return signals.reduce((sum, signal) => sum + signal.weight * signal.value, 0) / totalWeight;
+}
+
+function candidateDataQualityScore(candidate = {}) {
+  const checks = [
+    typeof candidate.latitude === 'number' && typeof candidate.longitude === 'number',
+    Boolean(candidate.description),
+    Boolean(candidate.openingTime && candidate.closingTime),
+    Boolean(candidate.website || candidate.phone),
+    Boolean(candidate.category || candidate.poiType || (candidate.cuisine || []).length),
+  ];
+  return checks.filter(Boolean).length / checks.length;
+}
+
 /** Closer = higher score; falls off smoothly, floors at 0 beyond decayKm. */
 function proximityScore(distanceKm, decayKm = 15) {
   if (!Number.isFinite(distanceKm)) return 0.5; // unknown location - neutral
@@ -58,6 +97,8 @@ function distanceFromOrigin(origin, candidate) {
 
 module.exports = {
   normalizeRating,
+  candidateQualityScore,
+  candidateDataQualityScore,
   proximityScore,
   preferenceMatchScore,
   budgetScore,

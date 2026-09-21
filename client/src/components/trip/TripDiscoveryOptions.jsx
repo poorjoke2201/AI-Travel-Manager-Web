@@ -1,6 +1,17 @@
 import { formatInr, formatRating } from '../../utils/formatters';
 
-export default function TripDiscoveryOptions({ options, selectedHotelId, selectedTransportMode, onHotelChange, onTransportChange, onBack, onGenerate, isGenerating }) {
+export default function TripDiscoveryOptions({
+  options,
+  selectedHotelId,
+  selectedTransportMode,
+  selectedPlaceIds = [],
+  onHotelChange,
+  onTransportChange,
+  onPlaceToggle,
+  onBack,
+  onGenerate,
+  isGenerating,
+}) {
   return (
     <div className="space-y-6">
       <section className="journal-sheet relative overflow-hidden p-6 sm:p-8">
@@ -44,9 +55,29 @@ export default function TripDiscoveryOptions({ options, selectedHotelId, selecte
         </div>
       </OptionGroup>
 
-      <OptionGroup title="Places discovered for your itinerary" description="The planner will select from these places based on distance, timing, interests, and pace.">
+      <OptionGroup title="Places discovered for your itinerary" description="Choose the places you want the trip to definitely include, and the planner will build the itinerary around those picks.">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {options.places.map((place) => <div key={place.id} className="rounded-xs border border-stone-200 bg-white p-3"><p className="font-semibold text-ink">{place.name}</p><p className="mt-1 text-xs text-ink-500">{place.category || 'Point of interest'}{place.googleRating != null ? ` · ${formatRating(place.googleRating)}` : ''}</p></div>)}
+          {options.places.map((place) => {
+            const isSelected = selectedPlaceIds.includes(String(place.id));
+            return (
+              <button
+                key={place.id}
+                type="button"
+                onClick={() => onPlaceToggle(place)}
+                className={`rounded-xs border p-3 text-left transition-all ${isSelected ? 'border-ocean bg-ocean-50 shadow-paper' : 'border-stone-200 bg-white hover:border-stone-300'}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-ink">{place.name}</p>
+                    <p className="mt-1 text-xs text-ink-500">{place.category || 'Point of interest'}{place.googleRating != null ? ` · ${formatRating(place.googleRating)}` : ''}</p>
+                  </div>
+                  <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] ${isSelected ? 'border-ocean bg-ocean text-white' : 'border-stone-300 bg-white text-ink-500'}`}>
+                    {isSelected ? '✓' : '+'}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </OptionGroup>
 

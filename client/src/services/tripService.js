@@ -44,3 +44,8 @@ export async function discoverTripOptions(payload) {
   const { data } = await api.post('/trips/discover', payload);
   return data.data;
 }
+
+export async function acceptTripInvite(tripId) {
+  const { data } = await api.post(`/trips/${tripId}/accept-invite`);
+  return data.data;
+}

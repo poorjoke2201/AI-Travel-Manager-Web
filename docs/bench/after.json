@@ -1,0 +1,15 @@
+{
+  "phase": "Q3-v2-flagged-query",
+  "strategy": "city-variant-union",
+  "flag": "CANDIDATE_QUERY_V2",
+  "default": false,
+  "notes": "The v2 retrieval path is available, but intentionally remains off until shadow-mode verification passes.",
+  "city_variants": [
+    "Mysore",
+    "Mysuru",
+    "Bengaluru",
+    "Bangalore"
+  ],
+  "expected_recall_gain": "improved for canonical alias families",
+  "status": "ready-for-shadow-mode"
+}

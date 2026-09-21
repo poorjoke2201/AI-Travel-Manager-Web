@@ -67,6 +67,15 @@ function getCoords(el) {
   return null;
 }
 
+function stableSourceId(sourceRef) {
+  let hash = 2166136261;
+  for (const character of String(sourceRef)) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return 1000000000 + (hash >>> 0) % 8000000000;
+}
+
 function overpassPost(ql) {
   return new Promise((resolve, reject) => {
     const body = querystring.stringify({ data: ql });
@@ -157,7 +166,7 @@ out center tags;`;
             tags: [tags.tourism, tags.historic, tags.leisure, tags.amenity].filter(Boolean),
             source: 'dataset', sourceRef: osmId,
           },
-          $setOnInsert: { sourceId: Date.now() + Math.floor(Math.random() * 10000) },
+          $setOnInsert: { sourceId: stableSourceId(osmId) },
         },
         upsert: true,
       },
@@ -205,7 +214,7 @@ out center tags;`;
             source: 'osm',
             ...(coords ? { location: { type: 'Point', coordinates: [coords.lng, coords.lat] } } : {}),
           },
-          $setOnInsert: { sourceId: Date.now() + Math.floor(Math.random() * 10000) },
+          $setOnInsert: { sourceId: stableSourceId(`hotel-${city}-${name}`) },
         },
         upsert: true,
       },
@@ -256,7 +265,7 @@ out center tags;`;
             openingTime, closingTime,
             ...(coords ? { location: { type: 'Point', coordinates: [coords.lng, coords.lat] } } : {}),
           },
-          $setOnInsert: { sourceId: Date.now() + Math.floor(Math.random() * 10000) },
+          $setOnInsert: { sourceId: stableSourceId(`restaurant-${city}-${el.type}-${el.id}`) },
         },
         upsert: true,
       },

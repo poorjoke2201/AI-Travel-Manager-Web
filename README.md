@@ -12,7 +12,7 @@ The application should combine:
 - MongoDB
 - Structured travel datasets
 - Gemini AI
-- Google Maps APIs
+- Geoapify APIs
 - Leaflet
 - OpenStreetMap
 - Recommendation logic
@@ -154,7 +154,7 @@ Used for:
 - AI fallback suggestions
 - Natural-language explanations
 
-### Google Maps
+### Geoapify
 
 Used for:
 
@@ -178,7 +178,8 @@ Required variables should include:
 MONGO_URI=
 JWT_SECRET=
 GEMINI_API_KEY=
-GOOGLE_MAPS_API_KEY=
+GEOAPIFY_GEOCODING_API_KEY=
+GEOAPIFY_ROUTING_API_KEY=
 PORT=5000
 CLIENT_URL=http://localhost:5173
 NODE_ENV=development

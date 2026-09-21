@@ -94,7 +94,7 @@ Return exactly this JSON shape:
  * collections. Each candidate is passed with its Mongo _id as `id` so
  * Gemini can reference it via datasetId instead of inventing one.
  */
-function buildItineraryPrompt({ trip, candidatePOIs, candidateHotels, candidateRestaurants, weatherContext }) {
+function buildItineraryPrompt({ trip, candidatePOIs, candidateHotels, candidateRestaurants, mandatoryPlaces = [], weatherContext }) {
   const poiList = candidatePOIs
     .map((p) => {
       const hours = (p.openingTime && p.closingTime) ? ` opens=${p.openingTime} closes=${p.closingTime}` : '';
@@ -127,6 +127,10 @@ IMPORTANT SCHEDULING RULES:
 - Insert a breakfast activity (~08:00, 30 min) from the restaurant list on Day 2 onwards.
 - Insert lunch (~12:30, 60 min) and dinner (~19:30, 60 min) from the restaurant list every day.
 - Between each POI/restaurant, insert a "travel" activity with realistic duration in minutes and notes showing distance.
+- Mandatory places below must appear in the itinerary at least once. Do not replace or omit them.
+
+Mandatory places:
+${mandatoryPlaces.length ? mandatoryPlaces.map((place) => `  - type=${place.type}, id=${place.refId}, name="${place.name}"`).join('\n') : '  (none)'}
 
 AI-estimated weather context:
 ${weatherContext || 'No specific weather context available.'}

@@ -1,36 +1,112 @@
 const Trip = require('../../models/Trip');
+const User = require('../../models/User');
 const ApiError = require('../../utils/apiError');
 const { recommendPOIs } = require('./../recommendation/poiRecommendation.service');
 const { recommendRestaurants } = require('./../recommendation/restaurantRecommendation.service');
 const { recommendHotels } = require('./../recommendation/hotelRecommendation.service');
 const { haversineDistanceKm } = require('../../utils/haversine');
 const { planItineraryRoutes } = require('../itinerary/routePlanner.service');
+const { canonicalizeCityName } = require('../destination/destinationResolver.service');
 
-/** Computes numberOfDays from startDate/endDate so the two can never drift apart (spec section 8). */
+function normalizePhoneNumber(value) {
+  if (typeof value !== 'string') return null;
+  const cleaned = value.replace(/[^\d+]/g, '');
+  if (!cleaned || (cleaned.length < 8 && !cleaned.startsWith('+'))) return null;
+  return cleaned.startsWith('+') ? `+${cleaned.replace(/\+/g, '')}` : cleaned;
+}
+
+function normalizeGroupTripMembers(members = []) {
+  const normalized = [];
+  const seen = new Set();
+
+  for (const member of members) {
+    if (!member) continue;
+
+    if (typeof member === 'string') {
+      const phoneNumber = normalizePhoneNumber(member);
+      if (!phoneNumber || seen.has(`phone:${phoneNumber}`)) continue;
+      seen.add(`phone:${phoneNumber}`);
+      normalized.push({ phoneNumber, name: null, role: 'member', status: 'pending' });
+      continue;
+    }
+
+    if (member.userId) {
+      const userId = String(member.userId);
+      if (seen.has(`user:${userId}`)) continue;
+      seen.add(`user:${userId}`);
+      normalized.push({
+        userId,
+        name: member.name ?? null,
+        email: member.email ?? null,
+        phoneNumber: member.phoneNumber ?? null,
+        role: member.role || 'member',
+        status: member.status || 'accepted',
+        joinedAt: member.joinedAt ?? null,
+      });
+      continue;
+    }
+
+    const phoneNumber = normalizePhoneNumber(member.phoneNumber);
+    if (!phoneNumber || seen.has(`phone:${phoneNumber}`)) continue;
+    seen.add(`phone:${phoneNumber}`);
+    normalized.push({
+      phoneNumber,
+      name: member.name ?? null,
+      email: member.email ?? null,
+      role: member.role || 'member',
+      status: member.status || 'pending',
+      joinedAt: member.joinedAt ?? null,
+    });
+  }
+
+  return normalized;
+}
+
 function computeNumberOfDays(startDate, endDate) {
   const start = new Date(startDate);
   const end = new Date(endDate);
   const diffMs = end.setHours(0, 0, 0, 0) - start.setHours(0, 0, 0, 0);
-  return Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1; // inclusive of both start and end day
+  return Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
 }
 
 async function createDraftTrip(userId, payload) {
   const numberOfDays = computeNumberOfDays(payload.startDate, payload.endDate);
-  return Trip.create({ ...payload, userId, numberOfDays, status: 'draft' });
+  const groupMembers = normalizeGroupTripMembers(payload.groupMembers || []);
+  const totalTravelers = Number(payload.travellers?.adults || 0) + Number(payload.travellers?.children || 0);
+  const isGroupTrip = Boolean(payload.isGroupTrip || groupMembers.length || totalTravelers > 1);
+  const destination = canonicalizeCityName(payload.destination);
+
+  return Trip.create({
+    ...payload,
+    destination,
+    userId,
+    numberOfDays,
+    status: 'draft',
+    isGroupTrip,
+    groupMembers,
+  });
 }
 
 async function listUserTrips(userId) {
-  return Trip.find({ userId }).sort({ createdAt: -1 }).lean();
+  const currentUser = await User.findById(userId).lean();
+  const phoneNumber = currentUser?.phoneNumber ? normalizePhoneNumber(currentUser.phoneNumber) : null;
+
+  return Trip.find({
+    $or: [
+      { userId },
+      { 'groupMembers.userId': userId },
+      ...(phoneNumber ? [{ 'groupMembers.phoneNumber': phoneNumber, 'groupMembers.status': 'accepted' }] : []),
+    ],
+  }).sort({ createdAt: -1 }).lean();
 }
 
 async function getTripById(tripId, userId) {
   const trip = await Trip.findById(tripId);
   if (!trip) throw ApiError.notFound('Trip not found.');
-  assertOwnership(trip, userId);
+  await assertOwnership(trip, userId);
   return trip;
 }
 
-/** Loose variant for endpoints (public trip view) where any authenticated user may read a public trip. */
 async function getTripForViewing(tripId, userId) {
   const trip = await Trip.findById(tripId);
   if (!trip) throw ApiError.notFound('Trip not found.');
@@ -67,9 +143,7 @@ async function replaceItineraryActivity(tripId, userId, dayNumber, activityIndex
     throw ApiError.badRequest('That itinerary activity cannot be replaced.');
   }
 
-  const destinationCoords = trip.destinationLocation?.lat
-    ? trip.destinationLocation
-    : null;
+  const destinationCoords = trip.destinationLocation?.lat ? trip.destinationLocation : null;
   const candidates = current.type === 'poi'
     ? await recommendPOIs(trip, destinationCoords)
     : current.type === 'restaurant'
@@ -97,6 +171,56 @@ async function replaceItineraryActivity(tripId, userId, dayNumber, activityIndex
   return trip;
 }
 
+async function acceptTripInvite(tripId, userId) {
+  const trip = await Trip.findById(tripId);
+  if (!trip) throw ApiError.notFound('Trip not found.');
+
+  const currentUser = await User.findById(userId);
+  if (!currentUser) throw ApiError.unauthorized('User for this invite no longer exists.');
+
+  const currentPhone = normalizePhoneNumber(currentUser.phoneNumber);
+  if (!currentPhone) throw ApiError.badRequest('Your account must have a verified phone number to accept an invite.');
+
+  const memberIndex = trip.groupMembers?.findIndex((member) => {
+    const sameUser = String(member.userId) === String(userId);
+    const samePhone = Boolean(member.phoneNumber) && normalizePhoneNumber(member.phoneNumber) === currentPhone;
+    return sameUser || samePhone;
+  });
+
+  if (memberIndex === -1) {
+    throw ApiError.notFound('This trip does not include your account as an invitee.');
+  }
+
+  const priorStatus = trip.groupMembers[memberIndex].status;
+  if (!['pending', 'invited', 'accepted'].includes(priorStatus)) {
+    throw ApiError.badRequest('This invite cannot be accepted in its current state.');
+  }
+
+  trip.groupMembers[memberIndex].userId = currentUser._id;
+  trip.groupMembers[memberIndex].name = currentUser.name || currentUser.username;
+  trip.groupMembers[memberIndex].email = currentUser.email || trip.groupMembers[memberIndex].email;
+  trip.groupMembers[memberIndex].status = 'accepted';
+  trip.groupMembers[memberIndex].joinedAt = new Date();
+
+  if (!trip.isGroupTrip) trip.isGroupTrip = true;
+  await trip.save();
+  return trip;
+}
+
+async function listPendingInvitesForUser(userId) {
+  const currentUser = await User.findById(userId).lean();
+  if (!currentUser?.phoneNumber) return [];
+
+  const phoneNumber = normalizePhoneNumber(currentUser.phoneNumber);
+  if (!phoneNumber) return [];
+
+  return Trip.find({
+    'groupMembers.phoneNumber': phoneNumber,
+    'groupMembers.status': { $in: ['pending', 'invited'] },
+    userId: { $ne: userId },
+  }).sort({ createdAt: -1 }).lean();
+}
+
 async function listPublicTrips({ limit = 20, skip = 0 } = {}) {
   return Trip.find({ isPublic: true })
     .sort({ createdAt: -1 })
@@ -106,19 +230,28 @@ async function listPublicTrips({ limit = 20, skip = 0 } = {}) {
     .lean();
 }
 
-/**
- * A user must never be able to read/modify another user's private trip by
- * ID-guessing (spec section 42) - this is the single choke point for that
- * check across update/delete/get.
- */
-function assertOwnership(trip, userId) {
-  if (String(trip.userId) !== String(userId)) {
+async function assertOwnership(trip, userId) {
+  if (String(trip.userId) === String(userId)) return;
+
+  const currentUser = await User.findById(userId).lean();
+  const currentPhone = currentUser?.phoneNumber ? normalizePhoneNumber(currentUser.phoneNumber) : null;
+  const isGroupMember = trip.groupMembers?.some((member) => {
+    const sameUser = String(member.userId) === String(userId);
+    const samePhone = Boolean(currentPhone)
+      && member.phoneNumber
+      && normalizePhoneNumber(member.phoneNumber) === currentPhone;
+    return (sameUser || samePhone) && member.status === 'accepted';
+  });
+
+  if (!isGroupMember) {
     throw ApiError.forbidden('You do not have access to this trip.');
   }
 }
 
 module.exports = {
   computeNumberOfDays,
+  normalizePhoneNumber,
+  normalizeGroupTripMembers,
   createDraftTrip,
   listUserTrips,
   getTripById,
@@ -126,5 +259,7 @@ module.exports = {
   updateTrip,
   deleteTrip,
   replaceItineraryActivity,
+  acceptTripInvite,
+  listPendingInvitesForUser,
   listPublicTrips,
 };

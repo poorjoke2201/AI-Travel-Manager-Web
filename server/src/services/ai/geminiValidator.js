@@ -30,6 +30,13 @@ function validateTransport(rawJson) {
   return { valid: true, errors: [], data: parsed.data };
 }
 
+function parseTime(value) {
+  if (typeof value !== 'string' || !/^\d{2}:\d{2}$/.test(value)) return null;
+  const [hours, minutes] = value.split(':').map(Number);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
 function validateItinerary(rawJson, { trip, candidateIds }) {
   const parsed = itineraryResponseSchema.safeParse(rawJson);
   if (!parsed.success) {
@@ -59,6 +66,24 @@ function validateItinerary(rawJson, { trip, candidateIds }) {
     }
 
     day.activities.forEach((activity, actIdx) => {
+      const startMinutes = parseTime(activity.startTime);
+      const duration = Number(activity.duration);
+      if (startMinutes == null) {
+        errors.push(`Day ${day.day} activity ${actIdx} ("${activity.name}") must have a valid HH:mm startTime`);
+      } else {
+        const earliest = day.day === 1 ? 11 * 60 : 8 * 60;
+        const latest = 21 * 60 + 30;
+        if (startMinutes < earliest) errors.push(`Day ${day.day} activity ${actIdx} starts before the allowed day window`);
+        if (Number.isFinite(duration) && startMinutes + duration > latest) errors.push(`Day ${day.day} activity ${actIdx} runs past the daily end time`);
+        if (actIdx > 0) {
+          const previous = day.activities[actIdx - 1];
+          const previousStart = parseTime(previous.startTime);
+          const previousDuration = Number(previous.duration);
+          if (previousStart != null && Number.isFinite(previousDuration) && startMinutes < previousStart + previousDuration) {
+            errors.push(`Day ${day.day} activities overlap around activity ${actIdx}`);
+          }
+        }
+      }
       // hotel/travel/break activities are context-only and not strictly validated against candidateIds
       if (activity.source === 'dataset' && !['hotel', 'travel', 'break'].includes(activity.type)) {
         const id = activity.datasetId != null ? String(activity.datasetId) : null;
@@ -69,6 +94,18 @@ function validateItinerary(rawJson, { trip, candidateIds }) {
           );
         }
       }
+    });
+  });
+
+  const restaurantIds = new Set();
+  days.forEach((day) => {
+    const meals = day.activities.filter((activity) => activity.type === 'restaurant');
+    if (meals.length < 3) errors.push(`Day ${day.day} must contain breakfast, lunch, and dinner.`);
+    day.activities.forEach((activity) => {
+    if (activity.type !== 'restaurant' || activity.datasetId == null) return;
+    const id = String(activity.datasetId);
+    if (restaurantIds.has(id)) errors.push(`Restaurant ${id} is repeated; meals must use distinct restaurants.`);
+    restaurantIds.add(id);
     });
   });
 

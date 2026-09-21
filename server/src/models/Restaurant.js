@@ -25,6 +25,9 @@ const restaurantSchema = new mongoose.Schema(
     website: { type: String, default: null },
     phone: { type: String, default: null },
 
+    openingTime: { type: String, default: null },
+    closingTime: { type: String, default: null },
+
     source: { type: String, default: null }, // swiggy | zomato | ...
 
     latitude: { type: Number, default: null, min: -90, max: 90 },

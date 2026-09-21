@@ -1,14 +1,14 @@
-import { formatInr, formatRating, toTitleCase } from '../../utils/formatters';
+import { formatInr, formatRating } from '../../utils/formatters';
+import { getPlaceTypeLabel } from '../../mapIcons/getPlaceTypeLabel';
 
 export default function LocationPopup({ item, type, onAddToTrip }) {
+  const readableType = getPlaceTypeLabel(item);
+  const name = item?.name || 'Unnamed place';
+
   return (
     <div className="min-w-[200px] max-w-[240px] font-sans">
-      <h4 className="mb-1 font-semibold text-ink">{item.name}</h4>
-      {(item.category || item.cuisine) && (
-        <p className="mb-1 text-xs text-ink-500">
-          {item.category || (item.cuisine || []).map(toTitleCase).join(', ')}
-        </p>
-      )}
+      <h4 className="mb-1 font-semibold text-ink">{name}</h4>
+      {readableType && <p className="mb-1 text-xs text-ink-500">{readableType}</p>}
       {(item.googleRating != null || item.rating != null) && (
         <p className="mb-1 text-xs text-ink-500">{formatRating(item.googleRating ?? item.rating)}</p>
       )}

@@ -4,6 +4,13 @@ const ApiError = require('../../utils/apiError');
 
 const CATEGORIES = ['transport', 'accommodation', 'food', 'activities', 'shopping', 'miscellaneous'];
 
+function normalizePhoneNumber(value) {
+  if (typeof value !== 'string') return null;
+  const cleaned = value.replace(/[^\d+]/g, '');
+  if (!cleaned || (cleaned.length < 8 && !cleaned.startsWith('+'))) return null;
+  return cleaned.startsWith('+') ? `+${cleaned.replace(/\+/g, '')}` : cleaned;
+}
+
 function categoryPlan(trip) {
   const summary = trip.budgetSummary || {};
   const total = Number(trip.budget) || Number(summary.totalEstimatedInr) || 0;
@@ -21,14 +28,17 @@ function categoryPlan(trip) {
 }
 
 async function getOwnedTrip(userId, tripId) {
-  const trip = await Trip.findOne({ _id: tripId, userId });
+  const trip = await Trip.findOne({
+    _id: tripId,
+    $or: [{ userId }, { 'groupMembers.userId': userId }],
+  });
   if (!trip) throw ApiError.notFound('Trip not found or you do not have access to it.');
   return trip;
 }
 
 async function getBudget(userId, tripId) {
   const trip = await getOwnedTrip(userId, tripId);
-  const expenses = await Expense.find({ userId, tripId }).sort({ date: -1, createdAt: -1 }).lean();
+  const expenses = await Expense.find({ tripId }).sort({ date: -1, createdAt: -1 }).lean();
   const plannedByCategory = categoryPlan(trip);
   const spentByCategory = Object.fromEntries(CATEGORIES.map((category) => [category, 0]));
   expenses.forEach((expense) => { spentByCategory[expense.category] += expense.amount; });
@@ -44,6 +54,8 @@ async function getBudget(userId, tripId) {
     percentageUsed: plannedByCategory[category] ? Math.round((spentByCategory[category] / plannedByCategory[category]) * 100) : 0,
   }));
 
+  const balances = trip.isGroupTrip ? computeGroupBalances(trip, expenses) : [];
+
   return {
     tripId: trip._id,
     plannedTotal,
@@ -52,18 +64,132 @@ async function getBudget(userId, tripId) {
     percentageUsed: plannedTotal ? Math.round((spent / plannedTotal) * 100) : 0,
     status: remaining < 0 ? 'critical' : plannedTotal && remaining / plannedTotal <= 0.1 ? 'critical' : plannedTotal && remaining / plannedTotal <= 0.3 ? 'warning' : 'normal',
     categories,
+    balances,
     expenses,
   };
 }
 
+function resolveExpenseShares(expense, participantIds) {
+  const total = Number(expense.amount) || 0;
+  const participantSet = participantIds.map(String);
+  const shareByParticipant = new Map();
+
+  if (!participantSet.length) return shareByParticipant;
+
+  if (expense.splitType === 'custom') {
+    const customAmounts = expense.customAmounts && typeof expense.customAmounts === 'object' ? expense.customAmounts : {};
+    for (const participantId of participantSet) {
+      shareByParticipant.set(participantId, Number(customAmounts[participantId] ?? customAmounts[String(participantId)] ?? 0));
+    }
+    return shareByParticipant;
+  }
+
+  if (expense.splitType === 'percentage') {
+    const percentages = expense.percentages && typeof expense.percentages === 'object' ? expense.percentages : {};
+    for (const participantId of participantSet) {
+      const percent = Number(percentages[participantId] ?? percentages[String(participantId)] ?? 0);
+      shareByParticipant.set(participantId, (total * percent) / 100);
+    }
+    return shareByParticipant;
+  }
+
+  const equalShare = total / participantSet.length;
+  for (const participantId of participantSet) {
+    shareByParticipant.set(participantId, equalShare);
+  }
+  return shareByParticipant;
+}
+
+function computeGroupBalances(trip, expenses) {
+  const ownerMember = trip.userId ? { userId: String(trip.userId), name: 'Trip lead', role: 'owner', status: 'accepted' } : null;
+  const members = [
+    ...(ownerMember ? [ownerMember] : []),
+    ...(trip.groupMembers || []).filter((member) => member && (member.userId || member.phoneNumber)),
+  ];
+  const uniqueMembers = [];
+  const seenMembers = new Set();
+
+  for (const member of members) {
+    const memberId = member.userId ? String(member.userId) : member.phoneNumber ? `phone:${normalizePhoneNumber(member.phoneNumber)}` : null;
+    if (!memberId || seenMembers.has(memberId)) continue;
+    seenMembers.add(memberId);
+    uniqueMembers.push({ ...member, userId: member.userId ? String(member.userId) : member.phoneNumber ? null : null });
+  }
+
+  const membersMap = new Map(uniqueMembers
+    .filter((member) => member.userId)
+    .map((member) => [String(member.userId), { ...member, userId: String(member.userId) }]));
+  const totals = new Map();
+
+  for (const member of uniqueMembers) {
+    if (member.userId) totals.set(String(member.userId), 0);
+  }
+
+  for (const expense of expenses) {
+    const payerId = String(expense.payerId || expense.userId || trip.userId);
+    const participantIds = (expense.participants?.length ? expense.participants : [payerId]).map(String);
+    const shares = resolveExpenseShares(expense, participantIds);
+    const payerShare = Number(shares.get(payerId) || 0);
+
+    totals.set(payerId, (totals.get(payerId) || 0) + (Number(expense.amount) || 0) - payerShare);
+
+    for (const participantId of participantIds) {
+      if (participantId === payerId) continue;
+      totals.set(participantId, (totals.get(participantId) || 0) - (Number(shares.get(participantId) || 0)));
+    }
+  }
+
+  return Array.from(totals.entries())
+    .map(([userId, net]) => ({ userId, net: Number(net.toFixed(2)), name: membersMap.get(userId)?.name || 'Traveller', role: membersMap.get(userId)?.role || 'member' }))
+    .filter((entry) => Number(entry.net) !== 0)
+    .sort((a, b) => b.net - a.net);
+}
+
 async function listExpenses(userId, tripId) {
   await getOwnedTrip(userId, tripId);
-  return Expense.find({ userId, tripId }).sort({ date: -1, createdAt: -1 }).lean();
+  return Expense.find({ tripId }).sort({ date: -1, createdAt: -1 }).lean();
 }
 
 async function addExpense(userId, tripId, payload) {
-  await getOwnedTrip(userId, tripId);
-  return Expense.create({ ...payload, userId, tripId, date: new Date(payload.date) });
+  const trip = await getOwnedTrip(userId, tripId);
+  const splitType = ['equal', 'custom', 'percentage'].includes(payload?.splitType) ? payload.splitType : 'equal';
+  const defaultMembers = [
+    ...(trip.userId ? [String(trip.userId)] : []),
+    ...(trip.groupMembers?.filter((member) => member.userId).map((member) => String(member.userId)) || []),
+  ];
+  const participantIds = Array.isArray(payload.participants) && payload.participants.length
+    ? payload.participants.map(String)
+    : defaultMembers.length
+      ? Array.from(new Set(defaultMembers))
+      : [String(payload.payerId || userId)];
+
+  const cleanCustomAmounts = {};
+  const cleanPercentages = {};
+  if (payload.customAmounts && typeof payload.customAmounts === 'object') {
+    Object.entries(payload.customAmounts).forEach(([memberId, value]) => {
+      if (memberId && participantIds.includes(String(memberId))) cleanCustomAmounts[String(memberId)] = Number(value) || 0;
+    });
+  }
+  if (payload.percentages && typeof payload.percentages === 'object') {
+    Object.entries(payload.percentages).forEach(([memberId, value]) => {
+      if (memberId && participantIds.includes(String(memberId))) cleanPercentages[String(memberId)] = Number(value) || 0;
+    });
+  }
+
+  const normalized = {
+    ...payload,
+    userId,
+    tripId,
+    payerId: String(payload.payerId || userId),
+    date: new Date(payload.date || Date.now()),
+    isGroupExpense: Boolean(payload.isGroupExpense || trip.isGroupTrip),
+    splitType,
+    participants: participantIds,
+    customAmounts: cleanCustomAmounts,
+    percentages: cleanPercentages,
+    billImage: payload.billImage || null,
+  };
+  return Expense.create(normalized);
 }
 
 async function updateExpense(userId, expenseId, updates) {
@@ -91,4 +217,4 @@ async function getBudgetInsights(userId, tripId) {
   return { message, budget };
 }
 
-module.exports = { CATEGORIES, getBudget, getBudgetInsights, listExpenses, addExpense, updateExpense, deleteExpense };
+module.exports = { CATEGORIES, computeGroupBalances, getBudget, getBudgetInsights, listExpenses, addExpense, updateExpense, deleteExpense };

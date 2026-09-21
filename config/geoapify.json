@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "rateLimits": {
+    "perSecond": 2,
+    "perMinute": 30,
+    "dailyQuota": 2500
+  },
+  "cacheTtls": {
+    "geocodeSeconds": 86400,
+    "placeDetailsSeconds": 604800,
+    "routeSeconds": 86400,
+    "matrixSeconds": 86400
+  },
+  "defaults": {
+    "radiusKm": 8,
+    "limit": 20,
+    "mode": "drive"
+  },
+  "cityCircuity": {
+    "default": 1.2,
+    "bengaluru": 1.15,
+    "mysore": 1.18,
+    "delhi": 1.28,
+    "mumbai": 1.22,
+    "goa": 1.16
+  }
+}

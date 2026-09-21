@@ -15,18 +15,30 @@ export default function CreateTripPage() {
   const [pendingPayload, setPendingPayload] = useState(null);
   const [selectedHotelId, setSelectedHotelId] = useState(null);
   const [selectedTransportMode, setSelectedTransportMode] = useState(null);
+  const [selectedPlaces, setSelectedPlaces] = useState([]);
   const [error, setError] = useState(null);
   const [headerParallax, setHeaderParallax] = useState({ x: 0, y: 0 });
+
+  function normalizeSelectedPlaces(places = []) {
+    return places.map((place) => ({
+      refId: String(place.id),
+      type: 'poi',
+      name: place.name,
+      source: place.source || 'dataset',
+    }));
+  }
 
   async function handleSubmit(payload) {
     setError(null);
     setIsDiscovering(true);
     try {
       const options = await tripService.discoverTripOptions(payload);
+      const defaultSelected = normalizeSelectedPlaces((options.places || []).slice(0, 6));
       setPendingPayload(payload);
       setDiscovery(options);
       setSelectedHotelId(options.stays[0]?.id || null);
       setSelectedTransportMode(options.transport[0]?.mode || payload.transportPreference);
+      setSelectedPlaces(defaultSelected);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -37,16 +49,35 @@ export default function CreateTripPage() {
   async function handleGenerate() {
     setError(null);
     setIsGenerating(true);
+    setDiscovery(null);
+
     try {
       const trip = await tripService.createAndGenerateTrip({
         ...pendingPayload,
         selectedHotelId,
         selectedTransportMode,
+        selectedPlaces: selectedPlaces.length ? selectedPlaces : normalizeSelectedPlaces(discovery?.places || []),
+        discoveredCandidates: {
+          places: discovery?.places || [],
+          stays: discovery?.stays || [],
+          restaurants: discovery?.restaurants || [],
+        },
       });
+
+      if (!trip?._id) {
+        throw new Error('Trip generation did not return a valid trip id.');
+      }
+
       upsertTripInCache(trip);
-      navigate(`/trip/${trip._id}`);
+      const nextPath = `/trip/${trip._id}/itinerary`;
+      navigate(nextPath, { replace: true });
+
+      if (window.location.pathname !== nextPath) {
+        window.location.assign(nextPath);
+      }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Could not build the itinerary. Please try again.');
+      setDiscovery((current) => current ?? discovery);
       setIsGenerating(false);
     }
   }
@@ -72,8 +103,18 @@ export default function CreateTripPage() {
           options={discovery}
           selectedHotelId={selectedHotelId}
           selectedTransportMode={selectedTransportMode}
+          selectedPlaceIds={selectedPlaces.map((place) => place.refId)}
           onHotelChange={setSelectedHotelId}
           onTransportChange={setSelectedTransportMode}
+          onPlaceToggle={(place) => {
+            const refId = String(place.id);
+            setSelectedPlaces((current) => {
+              const exists = current.some((item) => item.refId === refId);
+              return exists
+                ? current.filter((item) => item.refId !== refId)
+                : [...current, { refId, type: 'poi', name: place.name, source: place.source || 'dataset' }];
+            });
+          }}
           onBack={() => setDiscovery(null)}
           onGenerate={handleGenerate}
           isGenerating={isGenerating}

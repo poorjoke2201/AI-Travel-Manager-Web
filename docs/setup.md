@@ -3,8 +3,8 @@
 - Node.js 18 or newer
 - MongoDB connection string
 - Gemini API key
-- Google Maps API key with Geocoding and Directions enabled
-- Geoapify API key for routing/geocoding fallback
+- Geoapify API key for geocoding and routing
+- LocationIQ API key for secondary geocoding fallback
 
 ## Install
 

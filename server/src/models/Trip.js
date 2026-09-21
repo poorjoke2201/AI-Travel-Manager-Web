@@ -4,24 +4,30 @@ const mongoose = require('mongoose');
 const activitySchema = new mongoose.Schema(
   {
     type: { type: String, enum: ['poi', 'restaurant', 'hotel', 'travel', 'break'], required: true },
-    refId: { type: mongoose.Schema.Types.ObjectId, default: null }, // POI/Hotel/Restaurant _id when dataset-backed
+    refId: { type: String, default: null }, // Dataset IDs may be Mongo ObjectIds or Overture/string IDs.
     name: { type: String, required: true },
     startTime: { type: String, default: null }, // "HH:mm"
     endTime: { type: String, default: null }, // "HH:mm"
     duration: { type: Number, default: null }, // minutes
+    openingTime: { type: String, default: null },
+    closingTime: { type: String, default: null },
+    weeklyOff: { type: String, default: null },
+    mealType: { type: String, default: null },
     notes: { type: String, default: null },
     description: { type: String, default: null },
     website: { type: String, default: null },
     phone: { type: String, default: null },
     imageUrl: { type: String, default: null },
     sourceRef: { type: String, default: null },
+    category: { type: String, default: null },
+    poiType: { type: String, default: null },
     estimatedCostInr: { type: Number, default: null },
     estimatedCostIsEstimate: { type: Boolean, default: true },
     location: {
       lat: { type: Number, default: null },
       lng: { type: Number, default: null },
     },
-    source: { type: String, enum: ['dataset', 'gemini', 'google_maps', 'geoapify'], default: 'dataset' },
+    source: { type: String, enum: ['dataset', 'gemini', 'google_maps', 'geoapify', 'overpass', 'overture', 'web-discovery'], default: 'dataset' },
   },
   { _id: false }
 );
@@ -58,9 +64,9 @@ const transportOptionSchema = new mongoose.Schema(
     summary: { type: String, default: null },
     approxDurationHrs: { type: Number, default: null },
     approxPriceInr: { type: Number, default: null },
-    distanceKm: { type: Number, default: null }, // from Google Maps, only for car
+    distanceKm: { type: Number, default: null }, // road distance for car/bike when available
     isLiveAvailability: { type: Boolean, default: false }, // always false unless a real booking API exists
-    source: { type: String, enum: ['gemini', 'google_maps', 'geoapify'], default: 'gemini' },
+    source: { type: String, enum: ['gemini', 'google_maps', 'geoapify', 'overture'], default: 'gemini' },
   },
   { _id: false }
 );
@@ -116,14 +122,34 @@ const tripSchema = new mongoose.Schema(
       default: 'any',
     },
     dailyTravelToleranceKm: { type: Number, default: null },
-    selectedHotelId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', default: null },
+    selectedHotelId: { type: String, default: null },
     selectedTransportMode: { type: String, enum: ['flight', 'train', 'bus', 'car', 'bike', null], default: null },
     selectedPlaces: {
       type: [{
         refId: { type: String, required: true },
         type: { type: String, enum: ['poi', 'hotel', 'restaurant'], required: true },
         name: { type: String, required: true },
-        source: { type: String, enum: ['dataset', 'geoapify', 'gemini'], default: 'dataset' },
+        source: { type: String, enum: ['dataset', 'geoapify', 'gemini', 'overture', 'overpass', 'web-discovery'], default: 'dataset' },
+      }],
+      default: [],
+    },
+    discoveredCandidates: {
+      places: { type: [mongoose.Schema.Types.Mixed], default: [] },
+      stays: { type: [mongoose.Schema.Types.Mixed], default: [] },
+      restaurants: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    },
+
+    isGroupTrip: { type: Boolean, default: false, index: true },
+    inviteCode: { type: String, default: null },
+    groupMembers: {
+      type: [{
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+        phoneNumber: { type: String, default: null },
+        name: { type: String, default: null },
+        email: { type: String, default: null },
+        role: { type: String, enum: ['owner', 'admin', 'member'], default: 'member' },
+        status: { type: String, enum: ['accepted', 'pending', 'invited'], default: 'pending' },
+        joinedAt: { type: Date, default: null },
       }],
       default: [],
     },
