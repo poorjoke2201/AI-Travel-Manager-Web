@@ -18,7 +18,7 @@ export default function ItineraryTabs({ activeTab, onChange, showMemberTab = fal
           onClick={() => onChange(tab.key)}
           className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
             activeTab === tab.key
-              ? 'border-clay bg-clay-100 text-clay-600'
+              ? 'border-clay text-clay-600'
               : 'border-transparent text-ink-500 hover:border-stone-300 hover:text-ink'
           }`}
         >

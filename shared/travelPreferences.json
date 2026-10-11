@@ -1,0 +1,46 @@
+{
+  "placeInterests": [
+    "Historical", "Heritage", "Nature", "Adventure", "Beaches", "Mountains",
+    "Wildlife", "Religious", "Cultural", "Museums", "Shopping", "Nightlife",
+    "Photography", "Architecture", "Local experiences", "Entertainment",
+    "Family-friendly", "Romantic"
+  ],
+  "foodPreferences": [
+    "Vegetarian", "Non-vegetarian", "Vegan", "Jain", "Local cuisine",
+    "North Indian", "South Indian", "Chinese", "Continental", "Street food",
+    "Fine dining", "Budget food", "No preference"
+  ],
+  "travelStyles": [
+    { "value": "budget", "label": "Budget" },
+    { "value": "moderate", "label": "Moderate" },
+    { "value": "luxury", "label": "Luxury" }
+  ],
+  "tripTypes": [
+    { "value": "solo", "label": "Solo" },
+    { "value": "couple", "label": "Couple" },
+    { "value": "family", "label": "Family" },
+    { "value": "friends", "label": "Friends" },
+    { "value": "business", "label": "Business" }
+  ],
+  "paceOptions": [
+    { "value": "relaxed", "label": "Relaxed" },
+    { "value": "balanced", "label": "Balanced" },
+    { "value": "packed", "label": "Packed" }
+  ],
+  "accommodationPreferences": [
+    { "value": "hotel", "label": "Hotel" },
+    { "value": "hostel", "label": "Hostel" },
+    { "value": "resort", "label": "Resort" },
+    { "value": "budget", "label": "Budget" },
+    { "value": "luxury", "label": "Luxury" },
+    { "value": "any", "label": "Any" }
+  ],
+  "transportModes": [
+    { "value": "flight", "label": "Flight" },
+    { "value": "train", "label": "Train" },
+    { "value": "bus", "label": "Bus" },
+    { "value": "car", "label": "Car" },
+    { "value": "bike", "label": "Bike" },
+    { "value": "any", "label": "Any" }
+  ]
+}

@@ -1173,6 +1173,7 @@ POST   /api/trips
 POST   /api/trips/generate
 GET    /api/trips
 GET    /api/trips/:id
+GET    /api/trips/:id/cover-image
 PUT    /api/trips/:id
 DELETE /api/trips/:id
 ```
@@ -1663,3 +1664,32 @@ Frontend
 ```
 
 and should be structured so that individual external services can be replaced later without rewriting the entire application.
+
+---
+
+# TRIP BUDGET RECEIPTS
+
+Expense receipts are optional JPEG or PNG images. The authenticated upload endpoint accepts one image up to 5 MB and validates its declared media type against the file signature. Receipt files are stored in the private `server/uploads/receipts/` directory using generated filenames; that directory is excluded from Git and must be mounted on persistent storage when deploying the server.
+
+Receipt metadata is associated with a trip in MongoDB. Upload, retrieval, and removal endpoints require authentication and trip access. Budget PDFs include images attached to expenses matching the report filters in a receipt appendix.
+
+```text
+POST   /api/trips/:tripId/receipts
+GET    /api/trips/:tripId/receipts/:receiptId
+DELETE /api/trips/:tripId/receipts/:receiptId
+```
+
+## PROFILE API
+
+The authenticated profile endpoints return the caller's phone number only for that caller. Profile updates accept display name, city/country, and a tagline of up to 80 characters. Phone changes use a request-and-verify OTP flow. Avatar uploads accept JPEG/PNG images up to 2 MB and are stored privately under `server/uploads/avatars/`; deployments using local storage must persist this directory.
+
+```text
+GET    /api/profile
+PATCH  /api/profile
+GET    /api/profile/summary
+POST   /api/profile/phone-change
+POST   /api/profile/phone-change/verify
+POST   /api/profile/avatar
+GET    /api/profile/avatar
+DELETE /api/profile/avatar
+```

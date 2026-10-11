@@ -3,6 +3,7 @@ const POI = require('../models/POI');
 const Hotel = require('../models/Hotel');
 const Restaurant = require('../models/Restaurant');
 const ApiError = require('../utils/apiError');
+const activityService = require('../services/activity/activity.service');
 
 async function getTrip(userId, tripId) {
   const trip = await Trip.findOne({ _id: tripId, userId });
@@ -18,6 +19,10 @@ async function addPlaceToTrip(req, res, next) {
     if (!trip.selectedPlaces.some((place) => place.refId === String(refId) && place.type === type)) {
       trip.selectedPlaces.push({ refId: String(refId), type, name, source });
       await trip.save();
+      await activityService.recordBestEffort(req.userId, 'place_added', {
+        tripId: trip._id,
+        meta: { tripName: trip.tripName, destination: trip.destination, placeName: name, placeType: type },
+      });
     }
     res.status(201).json({ success: true, data: trip.selectedPlaces });
   } catch (err) { next(err); }

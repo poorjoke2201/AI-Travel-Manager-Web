@@ -1,10 +1,11 @@
+const bcrypt = require('bcryptjs');
 const User = require('../../models/User');
 const ApiError = require('../../utils/apiError');
 const otpService = require('./otp.service');
 const { signToken } = require('./jwt.service');
 
 /** Kicks off registration: validates uniqueness, sends OTP. User is NOT created yet. */
-async function startRegistration({ phoneNumber, username, avatar }) {
+async function startRegistration({ phoneNumber, username, password, avatar }) {
   const existing = await User.findOne({ $or: [{ phoneNumber }, { username }] });
   if (existing) {
     if (existing.phoneNumber === phoneNumber) {
@@ -14,7 +15,7 @@ async function startRegistration({ phoneNumber, username, avatar }) {
   }
 
   otpService.sendOtp(phoneNumber);
-  return { phoneNumber, username, avatar };
+  return { phoneNumber, username, password: Boolean(password), avatar };
 }
 
 /** Sends an OTP for an existing user attempting to log in. */
@@ -25,6 +26,22 @@ async function startLogin({ phoneNumber }) {
   }
   otpService.sendOtp(phoneNumber);
   return { phoneNumber };
+}
+
+async function loginWithPassword({ phoneNumber, password }) {
+  const user = await User.findOne({ phoneNumber });
+  if (!user) {
+    throw ApiError.notFound('No account found for this phone number.');
+  }
+  if (!user.passwordHash) {
+    throw ApiError.unauthorized('This account does not have a password yet. Use OTP login or set up a password first.');
+  }
+  const isValid = await bcrypt.compare(password, user.passwordHash);
+  if (!isValid) {
+    throw ApiError.unauthorized('Incorrect password.');
+  }
+  const token = signToken({ sub: user._id.toString() });
+  return { user: user.toPublicJSON(), token };
 }
 
 /** Generic OTP send, used by both register and login flows via the same endpoint contract. */
@@ -57,6 +74,7 @@ async function verifyOtpAndAuthenticate({ phoneNumber, code, pendingProfile }) {
     user = await User.create({
       phoneNumber,
       username: pendingProfile.username,
+      passwordHash: pendingProfile.password || null,
       avatar: pendingProfile.avatar || null,
       isPhoneVerified: true,
     });
@@ -75,4 +93,4 @@ async function getUserById(userId) {
   return user;
 }
 
-module.exports = { startRegistration, startLogin, sendOtp, verifyOtpAndAuthenticate, getUserById };
+module.exports = { startRegistration, startLogin, loginWithPassword, sendOtp, verifyOtpAndAuthenticate, getUserById };

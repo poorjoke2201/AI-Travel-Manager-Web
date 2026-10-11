@@ -1,10 +1,5 @@
-export const TRANSPORT_MODES = [
-  { value: 'flight', label: 'Flight' },
-  { value: 'train', label: 'Train' },
-  { value: 'bus', label: 'Bus' },
-  { value: 'car', label: 'Car' },
-  { value: 'bike', label: 'Bike' },
-  { value: 'any', label: 'Any' },
-];
+import options from '../../../shared/travelPreferences.json';
+
+export const TRANSPORT_MODES = options.transportModes;
 
 export const TRANSPORT_DISCLAIMER = 'AI recommendation - estimated, not live availability';

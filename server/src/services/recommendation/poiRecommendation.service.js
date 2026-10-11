@@ -1,5 +1,5 @@
 const { getCandidatePOIs, poiCoverageTarget } = require('./candidate.service');
-const { candidateDataQualityScore, candidateQualityScore, normalizeRating, preferenceMatchScore, weightedScore } = require('./scoring.service');
+const { candidateDataQualityScore, candidateQualityScore, preferenceMatchScore, weightedScore } = require('./scoring.service');
 const { haversineDistanceKm } = require('../../utils/haversine');
 const { generateJson } = require('../ai/gemini.service');
 const logger = require('../../utils/logger');
@@ -7,7 +7,7 @@ const logger = require('../../utils/logger');
 const MIN_ACCEPTABLE_CANDIDATES = 5;
 const TOP_N_FOR_GEMINI = 25; // how many ranked candidates actually get sent to the itinerary prompt
 
-const WEIGHTS = { preference: 0.35, quality: 0.4, proximity: 0.15, dataQuality: 0.1 };
+const WEIGHTS = { preference: 0.25, quality: 0.55, proximity: 0.1, dataQuality: 0.1 };
 
 function scorePoi(poi, trip, referencePoint) {
   const preference = preferenceMatchScore(trip.placePreferences, [
@@ -17,7 +17,6 @@ function scorePoi(poi, trip, referencePoint) {
     poi.characteristics,
     (poi.tags || []).join(' '),
   ]);
-  const rating = normalizeRating(poi.googleRating);
   const quality = candidateQualityScore(poi);
   const dataQuality = candidateDataQualityScore(poi);
   // Distance is measured from the accommodation when available, not the city centroid.
@@ -74,40 +73,49 @@ async function recommendPOIs(trip, destinationCoords, accommodationPoint = null)
   const ranked = rawCandidates
     .map((poi) => ({ poi, score: scorePoi(poi, trip, referencePoint) }))
     .sort((a, b) => b.score - a.score)
-    .map(({ poi, score }) => ({
-      id: String(poi._id),
-      name: poi.name,
-      city: poi.city,
-      category: poi.category,
-      poiType: poi.poiType,
-      googleRating: poi.googleRating,
-      reviewCountLakhs: poi.reviewCountLakhs,
-      popularityScore: poi.popularityScore,
-      popularityProxy: poi.popularityProxy,
-      confidence: poi.confidence,
-      sourceCount: poi.sourceCount,
-      wikidataId: poi.wikidataId,
-      visitDurationHrs: poi.visitDurationHrs,
-      entryFeeInr: poi.entryFeeInr,
-      latitude: poi.latitude,
-      longitude: poi.longitude,
-      openingTime: poi.openingTime,
-      closingTime: poi.closingTime,
-      weeklyOff: poi.weeklyOff,
-      indoorOutdoor: poi.indoorOutdoor,
-      bestTimeToVisit: poi.bestTimeToVisit,
-      description: poi.description,
-      website: poi.website,
-      phone: poi.phone,
-      wikipedia: poi.wikipedia,
-      imageUrl: poi.imageUrl,
-      sourceRef: poi.sourceRef,
-      sourceProvider: poi.source,
-      preferenceScore: score,
-      qualityScore: candidateQualityScore(poi),
-      dataQualityScore: candidateDataQualityScore(poi),
-      source: 'dataset',
-    }));
+    .map(({ poi, score }) => {
+      const qualityScore = candidateQualityScore(poi);
+      return {
+        id: String(poi._id),
+        name: poi.name,
+        city: poi.city,
+        category: poi.category,
+        poiType: poi.poiType,
+        significance: poi.significance,
+        characteristics: poi.characteristics,
+        tags: poi.tags,
+        googleRating: poi.googleRating,
+        reviewCountLakhs: poi.reviewCountLakhs,
+        popularityScore: poi.popularityScore,
+        popularityProxy: poi.popularityProxy,
+        confidence: poi.confidence,
+        sourceCount: poi.sourceCount,
+        tier: poi.tier,
+        wikidataId: poi.wikidataId,
+        visitDurationHrs: poi.visitDurationHrs,
+        entryFeeInr: poi.entryFeeInr,
+        latitude: poi.latitude,
+        longitude: poi.longitude,
+        openingTime: poi.openingTime,
+        closingTime: poi.closingTime,
+        weeklyOff: poi.weeklyOff,
+        indoorOutdoor: poi.indoorOutdoor,
+        bestTimeToVisit: poi.bestTimeToVisit,
+        description: poi.description,
+        website: poi.website,
+        phone: poi.phone,
+        wikipedia: poi.wikipedia,
+        imageUrl: poi.imageUrl,
+        sourceRef: poi.sourceRef,
+        sourceProvider: poi.source,
+        recommendationScore: score,
+        importanceScore: qualityScore,
+        preferenceScore: score,
+        qualityScore,
+        dataQualityScore: candidateDataQualityScore(poi),
+        source: 'dataset',
+      };
+    });
 
   let finalList = dedupePOIs(ranked).slice(0, Math.max(targetPOIs, TOP_N_FOR_GEMINI));
 
@@ -122,7 +130,7 @@ async function recommendPOIs(trip, destinationCoords, accommodationPoint = null)
   return finalList;
 }
 
-module.exports = { recommendPOIs };
+module.exports = { recommendPOIs, scorePoi };
 
 function dedupePOIs(candidates) {
   const seen = new Set();

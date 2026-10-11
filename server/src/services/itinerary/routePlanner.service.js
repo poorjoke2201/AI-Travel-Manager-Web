@@ -1,6 +1,7 @@
 const { getRoute } = require('../maps/routing.service');
 const { planGeoapifyRoute } = require('../maps/geoapify.service');
 const { haversineDistanceKm } = require('../../utils/haversine');
+const { sequenceDayPOIs } = require('./sequencing.service');
 
 const DAY_START_MINUTES = 9 * 60;
 const FIRST_DAY_START_MINUTES = 11 * 60;
@@ -63,9 +64,9 @@ function fitsOpeningWindow(activity, startMinutes) {
   return closing == null || startMinutes + duration <= closing;
 }
 
-async function routeBetween(origin, destination) {
+async function routeBetween(origin, destination, routeProvider = getRoute) {
   if (!origin || !destination) return null;
-  const route = await getRoute(origin, destination, [], 'driving');
+  const route = await routeProvider(origin, destination, [], 'driving');
   if (route) return route;
   const distanceKm = haversineDistanceKm(origin, destination);
   return Number.isFinite(distanceKm)
@@ -79,16 +80,25 @@ async function optimizeDayStops(day, accommodation = null) {
   if (places.length < 2) return activities;
 
   const anchor = activities.find((activity) => activity.name === 'Stay base → first stop')?.location || accommodation;
-  if (!anchor || typeof anchor.lat !== 'number' || typeof anchor.lng !== 'number') return activities;
-
-  const plan = await planGeoapifyRoute(anchor, places.map((activity) => ({
+  const mappablePlaces = places.filter((activity) => pointFor(activity));
+  let orderedPlaces;
+  const plan = anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number' && mappablePlaces.length === places.length
+    ? await planGeoapifyRoute(anchor, places.map((activity) => ({
     ...pointFor(activity),
     duration: durationFor(activity),
     activity,
-  })));
-  if (!plan) return activities;
-
-  const orderedPlaces = plan.orderedStops.map((stop) => stop.activity);
+  })))
+    : null;
+  if (plan) {
+    orderedPlaces = plan.orderedStops.map((stop) => stop.activity);
+  } else {
+    const anchorPoint = anchor && typeof anchor.lat === 'number' && typeof anchor.lng === 'number' ? anchor : null;
+    orderedPlaces = sequenceDayPOIs(places.map((activity) => ({
+      ...activity,
+      latitude: pointFor(activity)?.lat,
+      longitude: pointFor(activity)?.lng,
+    })), anchorPoint);
+  }
   let placeIndex = 0;
   return activities.map((activity) => {
     if (!isPlaceActivity(activity)) return activity;
@@ -102,7 +112,7 @@ async function optimizeDayStops(day, accommodation = null) {
  * Converts an AI/fallback list into a sequential timetable. Provider routing is
  * used for every mappable leg; Haversine is only the final timing fallback.
  */
-async function planItineraryRoutes(days, { accommodation = null, reorder = process.env.ITINERARY_ROUTE_REORDER === 'true' } = {}) {
+async function planItineraryRoutes(days, { accommodation = null, reorder = true, routeProvider = getRoute } = {}) {
   for (const day of days) {
     // Preserve Gemini's structure. Geoapify reordering is opt-in because it
     // can otherwise move meals and breaks away from the intended schedule.
@@ -125,13 +135,13 @@ async function planItineraryRoutes(days, { accommodation = null, reorder = proce
           const breakStart = parseTime(activity.startTime);
           cursor = Math.max(cursor, breakStart ?? cursor);
           const breakActivity = { ...activity, startTime: formatTime(cursor), duration: durationFor(activity) };
-          if (cursor + breakActivity.duration > DAY_END_MINUTES) break;
+          if (cursor + breakActivity.duration > DAY_END_MINUTES) continue;
           breakActivity.endTime = formatTime(cursor + breakActivity.duration);
           planned.push(breakActivity);
           cursor += breakActivity.duration;
         } else if (activity.type === 'travel') {
           const travelDuration = durationFor(activity);
-          if (cursor + travelDuration > DAY_END_MINUTES) break;
+          if (cursor + travelDuration > DAY_END_MINUTES) continue;
           planned.push({ ...activity, startTime: formatTime(cursor), endTime: formatTime(cursor + travelDuration), duration: travelDuration });
           cursor += travelDuration;
         }
@@ -141,14 +151,28 @@ async function planItineraryRoutes(days, { accommodation = null, reorder = proce
       const requested = parseTime(activity.startTime);
       let candidateStart = Math.max(cursor, requested ?? cursor);
       candidateStart = openingStart(activity, candidateStart);
-      if (closedOnDate(activity, day.date) || !fitsOpeningWindow(activity, candidateStart)) continue;
+      const selectedPlace = activity.isSelected === true;
+      const closed = closedOnDate(activity, day.date);
+      const missesHours = !fitsOpeningWindow(activity, candidateStart);
+      if ((closed || missesHours) && !selectedPlace) continue;
 
       const currentPoint = pointFor(activity);
       if (previousPoint && currentPoint && planned[planned.length - 1]?.type !== 'travel') {
         // eslint-disable-next-line no-await-in-loop
-        const route = await routeBetween(previousPoint, currentPoint);
+        const route = await routeBetween(previousPoint, currentPoint, routeProvider);
         if (route?.durationMinutes) {
-          if (cursor + route.durationMinutes + TRAVEL_BUFFER_MINUTES > DAY_END_MINUTES) break;
+          if (cursor + route.durationMinutes > 23 * 60 + 59) {
+            if (selectedPlace) {
+              planned.push({
+                ...activity,
+                startTime: null,
+                endTime: null,
+                notes: [activity.notes, 'Selected stop retained but needs rescheduling; no time remains today.'].filter(Boolean).join(' ') || null,
+              });
+            }
+            continue;
+          }
+          if (cursor + route.durationMinutes + TRAVEL_BUFFER_MINUTES > DAY_END_MINUTES && !selectedPlace) continue;
           planned.push({
             type: 'travel',
             refId: null,
@@ -157,6 +181,8 @@ async function planItineraryRoutes(days, { accommodation = null, reorder = proce
             endTime: formatTime(cursor + route.durationMinutes),
             duration: route.durationMinutes,
             notes: route.distanceKm != null ? `${route.distanceKm.toFixed(1)} km` : 'Travel',
+            distanceKm: route.distanceKm ?? null,
+            isEstimated: route.provider !== 'geoapify',
             location: { lat: previousPoint.lat, lng: previousPoint.lng },
             source: route.provider === 'geoapify' ? 'geoapify' : 'gemini',
           });
@@ -164,8 +190,20 @@ async function planItineraryRoutes(days, { accommodation = null, reorder = proce
         }
       }
 
+      candidateStart = openingStart(activity, Math.max(cursor, requested ?? cursor));
+      if (candidateStart + durationFor(activity) > DAY_END_MINUTES && !selectedPlace) continue;
+      if (candidateStart + durationFor(activity) > 23 * 60 + 59) {
+        if (selectedPlace) {
+          planned.push({
+            ...activity,
+            startTime: null,
+            endTime: null,
+            notes: [activity.notes, 'Selected stop retained but needs rescheduling; no time remains today.'].filter(Boolean).join(' ') || null,
+          });
+        }
+        continue;
+      }
       cursor = candidateStart;
-      if (cursor + durationFor(activity) > DAY_END_MINUTES) break;
 
       const plannedActivity = {
         ...activity,
@@ -173,7 +211,8 @@ async function planItineraryRoutes(days, { accommodation = null, reorder = proce
         duration: durationFor(activity),
         notes: [
           activity.notes,
-          closedOnDate(activity, day.date) ? `Check opening hours: closed on ${activity.weeklyOff}.` : null,
+          closed ? `Selected place: verify opening hours; listed closed on ${activity.weeklyOff}.` : null,
+          missesHours ? 'Selected place: visit time may fall outside listed opening hours.' : null,
         ].filter(Boolean).join(' ') || null,
       };
       plannedActivity.endTime = formatTime(cursor + plannedActivity.duration);

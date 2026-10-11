@@ -24,9 +24,9 @@ function makeBodyHtml(color, label = '', selected = false, dimmed = false, badge
   `;
 }
 
-export function createMarkerIcon(type = 'poi', order = null, { selected = false, dimmed = false, poi = null, badge = null, badgeColor = '#111827' } = {}) {
+export function createMarkerIcon(type = 'poi', order = null, { selected = false, dimmed = false, poi = null, badge = null, badgeColor = '#111827', color: colorOverride = null } = {}) {
   const resolved = poi ? resolveIcon(poi) : { color: COLORS[type] || COLORS.poi, iconKey: type };
-  const color = resolved.color || COLORS[type] || COLORS.poi;
+  const color = colorOverride || resolved.color || COLORS[type] || COLORS.poi;
   const label = badge != null ? String(badge) : order != null ? String(order) : '';
   const key = `${resolved.iconKey || type}|${label}|${selected ? 'selected' : 'normal'}|${dimmed ? 'dimmed' : 'plain'}|${badgeColor}`;
   if (markerCache.has(key)) return markerCache.get(key);

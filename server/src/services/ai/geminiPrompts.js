@@ -96,10 +96,16 @@ Return exactly this JSON shape:
  */
 function buildItineraryPrompt({ trip, candidatePOIs, candidateHotels, candidateRestaurants, mandatoryPlaces = [], weatherContext }) {
   const poiList = candidatePOIs
-    .map((p) => {
+    .map((p, index) => {
       const hours = (p.openingTime && p.closingTime) ? ` opens=${p.openingTime} closes=${p.closingTime}` : '';
       const off = p.weeklyOff ? ` closed=${p.weeklyOff}` : '';
-      return `  - id=${p.id}, name="${p.name}", category=${p.category || 'n/a'}, rating=${p.googleRating ?? 'n/a'}, visitDurationHrs=${p.visitDurationHrs ?? 1}, lat=${p.latitude}, lng=${p.longitude}, indoorOutdoor=${p.indoorOutdoor || 'n/a'}, bestTime=${p.bestTimeToVisit || 'n/a'}${hours}${off}`;
+      const importance = Number.isFinite(p.importanceScore ?? p.qualityScore)
+        ? (p.importanceScore ?? p.qualityScore).toFixed(2)
+        : 'n/a';
+      const priority = Number.isFinite(p.recommendationScore ?? p.preferenceScore)
+        ? (p.recommendationScore ?? p.preferenceScore).toFixed(2)
+        : 'n/a';
+      return `  - systemPriority=${index + 1}, importance=${importance}, recommendationScore=${priority}, id=${p.id}, name="${p.name}", category=${p.category || 'n/a'}, rating=${p.googleRating ?? 'n/a'}, visitDurationHrs=${p.visitDurationHrs ?? 1}, lat=${p.latitude}, lng=${p.longitude}, indoorOutdoor=${p.indoorOutdoor || 'n/a'}, bestTime=${p.bestTimeToVisit || 'n/a'}${hours}${off}`;
     })
     .join('\n');
   const hotelList = candidateHotels
@@ -120,6 +126,8 @@ ${tripSummaryBlock(trip)}
 
 IMPORTANT SCHEDULING RULES:
 - Day 1 starts AFTER the traveller arrives from ${trip.origin}. Do NOT schedule any POI before 11:00 on Day 1.
+- POIs are ordered by systemPriority, which combines destination-wide quality/popularity, trip-interest match, proximity, and data completeness. Treat this order and importance as recommendation signals, not decoration.
+- Include the highest-priority, high-importance POIs that fit the trip duration and opening hours. Do not omit leading candidates solely because the traveller did not specify a matching interest.
 - ALWAYS respect opening and closing times listed for each POI/restaurant. Never schedule a visit outside those hours.
 - ALWAYS respect weekly off days — do not schedule a visit on a POI's closed day.
 - Add realistic travel time between consecutive POIs (estimate ~15-30 min for nearby, ~45-60 min for far apart based on lat/lng).

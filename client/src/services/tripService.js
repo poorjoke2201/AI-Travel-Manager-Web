@@ -26,6 +26,16 @@ export async function getTrip(tripId) {
   return data.data;
 }
 
+export async function getTripCoverImage(tripId) {
+  const { data } = await api.get(`/trips/${tripId}/cover-image`);
+  return data.data.coverImageUrl;
+}
+
+export async function enrichTripImages(tripId) {
+  const { data } = await api.post(`/trips/${tripId}/itinerary/enrich-images`);
+  return data.data;
+}
+
 export async function updateTrip(tripId, updates) {
   const { data } = await api.put(`/trips/${tripId}`, updates);
   return data.data;

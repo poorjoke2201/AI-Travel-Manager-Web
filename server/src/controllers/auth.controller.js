@@ -3,8 +3,8 @@ const authService = require('../services/auth/auth.service');
 /** POST /api/auth/register - validates uniqueness + sends OTP. Does not create the user yet. */
 async function register(req, res, next) {
   try {
-    const { phoneNumber, username, avatar } = req.body;
-    const result = await authService.startRegistration({ phoneNumber, username, avatar });
+    const { phoneNumber, username, password, avatar } = req.body;
+    const result = await authService.startRegistration({ phoneNumber, username, password, avatar });
     res.status(200).json({
       success: true,
       message: 'OTP sent. Verify to complete registration.',
@@ -15,10 +15,15 @@ async function register(req, res, next) {
   }
 }
 
-/** POST /api/auth/login - sends OTP for an existing account. */
+/** POST /api/auth/login - accepts either a password or an OTP request. */
 async function login(req, res, next) {
   try {
-    const { phoneNumber } = req.body;
+    const { phoneNumber, password } = req.body;
+    if (typeof password === 'string' && password.trim().length > 0) {
+      const result = await authService.loginWithPassword({ phoneNumber, password });
+      res.status(200).json({ success: true, message: 'Authenticated.', data: result });
+      return;
+    }
     const result = await authService.startLogin({ phoneNumber });
     res.status(200).json({ success: true, message: 'OTP sent.', data: result });
   } catch (err) {

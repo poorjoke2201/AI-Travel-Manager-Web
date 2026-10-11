@@ -1,5 +1,15 @@
 const mongoose = require('mongoose');
 
+const activityPhotoSchema = new mongoose.Schema(
+  {
+    url: { type: String, required: true },
+    pageUrl: { type: String, default: null },
+    license: { type: String, default: null },
+    artist: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 /** A single scheduled activity within a day of the itinerary (spec section 28). */
 const activitySchema = new mongoose.Schema(
   {
@@ -9,18 +19,26 @@ const activitySchema = new mongoose.Schema(
     startTime: { type: String, default: null }, // "HH:mm"
     endTime: { type: String, default: null }, // "HH:mm"
     duration: { type: Number, default: null }, // minutes
+    distanceKm: { type: Number, default: null },
+    travelMode: { type: String, default: null },
+    isEstimated: { type: Boolean, default: true },
     openingTime: { type: String, default: null },
     closingTime: { type: String, default: null },
     weeklyOff: { type: String, default: null },
     mealType: { type: String, default: null },
     notes: { type: String, default: null },
     description: { type: String, default: null },
+    wikipediaUrl: { type: String, default: null },
     website: { type: String, default: null },
     phone: { type: String, default: null },
     imageUrl: { type: String, default: null },
+    photos: { type: [activityPhotoSchema], default: [] },
     sourceRef: { type: String, default: null },
     category: { type: String, default: null },
     poiType: { type: String, default: null },
+    significance: { type: String, default: null },
+    characteristics: { type: String, default: null },
+    tags: { type: [String], default: [] },
     estimatedCostInr: { type: Number, default: null },
     estimatedCostIsEstimate: { type: Boolean, default: true },
     location: {
@@ -32,12 +50,27 @@ const activitySchema = new mongoose.Schema(
   { _id: false }
 );
 
+const dailyWeatherSchema = new mongoose.Schema(
+  {
+    date: { type: String, default: null },
+    maxC: { type: Number, default: null },
+    minC: { type: Number, default: null },
+    rainChance: { type: Number, default: null },
+    weather: { type: String, default: null },
+    windKmh: { type: Number, default: null },
+    uv: { type: Number, default: null },
+    source: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 const daySchema = new mongoose.Schema(
   {
     day: { type: Number, required: true },
     date: { type: String, required: true }, // ISO date string
     summary: { type: String, default: null },
     weatherContext: { type: String, default: null },
+    weather: { type: dailyWeatherSchema, default: null },
     activities: { type: [activitySchema], default: [] },
   },
   { _id: false }
@@ -99,6 +132,8 @@ const tripSchema = new mongoose.Schema(
     endDate: { type: Date, required: true },
     numberOfDays: { type: Number, required: true, min: 1 },
     budget: { type: Number, default: null },
+    coverImageUrl: { type: String, default: null },
+    coverImageResolvedAt: { type: Date, default: null },
 
     travellers: {
       adults: { type: Number, default: 1, min: 1 },
@@ -168,6 +203,9 @@ const tripSchema = new mongoose.Schema(
     intercityTransport: { type: [transportOptionSchema], default: [] },
     intracityTransport: { type: [transportOptionSchema], default: [] },
     itinerary: { type: [daySchema], default: [] },
+    itineraryImagesEnrichedAt: { type: Date, default: null },
+    itineraryContentEnrichedAt: { type: Date, default: null },
+    itineraryContentVersion: { type: Number, default: 0 },
     budgetSummary: { type: budgetSummarySchema, default: () => ({}) },
 
     recommendedHotel: {

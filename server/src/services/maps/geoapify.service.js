@@ -1,11 +1,13 @@
 const axios = require('axios');
 const { env } = require('../../config/env');
 const logger = require('../../utils/logger');
+const { haversineDistanceKm } = require('../../utils/haversine');
 
 const client = axios.create({
   baseURL: 'https://api.geoapify.com/v1',
   timeout: 8000,
 });
+const MAX_GEOCODE_DISTANCE_KM = 100;
 
 const placesClient = axios.create({
   baseURL: 'https://api.geoapify.com/v2',
@@ -17,25 +19,43 @@ const placesClient = axios.create({
  * Returns { lat, lng, formattedAddress } or null on any failure.
  * This is the application's canonical geocoding fallback layer.
  */
-async function geoapifyGeocode(query) {
+async function geoapifyGeocode(query, biasCoords = null) {
   if (!env.geoapifyGeocodingApiKey || env.geoapifyGeocodingApiKey.startsWith('<')) return null;
   if (!query || !query.trim()) return null;
 
   try {
-    const { data } = await client.get('/geocode/search', {
-      params: {
-        text: query,
-        filter: 'countrycode:in', // restrict to India
-        limit: 1,
-        apiKey: env.geoapifyGeocodingApiKey,
-      },
-    });
+    const params = {
+      text: query,
+      filter: 'countrycode:in',
+      limit: 5,
+      apiKey: env.geoapifyGeocodingApiKey,
+    };
+    // Bias toward destination city coordinates so results don't bleed to other cities
+    if (biasCoords) {
+      params.bias = `proximity:${biasCoords.lng},${biasCoords.lat}`;
+    }
+    const { data } = await client.get('/geocode/search', { params });
 
-    const feature = data.features && data.features[0];
-    if (!feature) return null;
-
-    const [lng, lat] = feature.geometry.coordinates;
-    return { lat, lng, formattedAddress: feature.properties.formatted };
+    const results = (data.features || [])
+      .map((feature) => {
+        const [lng, lat] = feature.geometry?.coordinates || [];
+        return {
+          lat,
+          lng,
+          formattedAddress: feature.properties?.formatted,
+        };
+      })
+      .filter((result) => Number.isFinite(result.lat) && Number.isFinite(result.lng));
+    if (!results.length) return null;
+    if (biasCoords) {
+      const nearbyResults = results.filter((result) =>
+        haversineDistanceKm(result, biasCoords) <= MAX_GEOCODE_DISTANCE_KM);
+      if (!nearbyResults.length) return null;
+      nearbyResults.sort((a, b) =>
+        haversineDistanceKm(a, biasCoords) - haversineDistanceKm(b, biasCoords));
+      return nearbyResults[0];
+    }
+    return results[0];
   } catch (err) {
     logger.warn(`Geoapify geocode failed for "${query}"`, err.message);
     return null;
@@ -58,7 +78,8 @@ async function searchGeoapifyPlaces({ lat, lng, radiusKm = 10, categories }) {
     });
     return Array.isArray(data.features) ? data.features : [];
   } catch (err) {
-    logger.warn('Geoapify Places search failed', err.message);
+    const message = err.response?.data?.message || err.response?.data?.error || err.message;
+    logger.warn('Geoapify Places search failed', message);
     return [];
   }
 }

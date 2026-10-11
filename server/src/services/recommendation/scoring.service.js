@@ -21,6 +21,9 @@ function candidateQualityScore(candidate = {}) {
   const signals = [];
   const popularity = normalizePopularity(candidate.popularityScore ?? candidate.popularityProxy);
   if (popularity != null) signals.push({ weight: 0.35, value: popularity });
+  const tierScores = { a: 1, b: 0.7, c: 0.4 };
+  const tierScore = tierScores[String(candidate.tier || '').toLowerCase()];
+  if (tierScore != null) signals.push({ weight: 0.15, value: tierScore });
 
   if (typeof candidate.googleRating === 'number') {
     signals.push({ weight: 0.25, value: normalizeRating(candidate.googleRating) });

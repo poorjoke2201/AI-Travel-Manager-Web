@@ -2,18 +2,61 @@ const axios = require('axios');
 const { geoapifyGeocode } = require('./geoapify.service');
 const { env } = require('../../config/env');
 const logger = require('../../utils/logger');
+const { haversineDistanceKm } = require('../../utils/haversine');
 
-async function locationIqGeocode(query) {
+const MAX_DESTINATION_DISTANCE_KM = 100;
+
+function isValidCoordinates(coords) {
+  return Number.isFinite(coords?.lat)
+    && Number.isFinite(coords?.lng)
+    && coords.lat >= -90
+    && coords.lat <= 90
+    && coords.lng >= -180
+    && coords.lng <= 180;
+}
+
+function isWithinDestinationRadius(coords, destinationCoords, maxDistanceKm = MAX_DESTINATION_DISTANCE_KM) {
+  if (!isValidCoordinates(coords)) return false;
+  if (!isValidCoordinates(destinationCoords)) return true;
+  return haversineDistanceKm(coords, destinationCoords) <= maxDistanceKm;
+}
+
+async function locationIqGeocode(query, biasCoords = null) {
   if (!env.locationIqApiKey || !query?.trim()) return null;
   try {
-    const { data } = await axios.get(`${env.locationIqBaseUrl}/search.php`, {
-      params: { key: env.locationIqApiKey, q: query, format: 'json', limit: 1, countrycodes: 'in' },
+    const params = {
+      key: env.locationIqApiKey,
+      q: query,
+      format: 'json',
+      limit: 5,
+      countrycodes: 'in',
+      addressdetails: 1,
+    };
+    // Bias results toward the destination city when we know its coordinates
+    if (biasCoords) {
+      params.viewbox = `${biasCoords.lng - 1},${biasCoords.lat + 1},${biasCoords.lng + 1},${biasCoords.lat - 1}`;
+      params.bounded = 0; // soft bias, not hard clip
+    }
+    const { data } = await axios.get(`${env.locationIqBaseUrl}/search`, {
+      params,
       headers: { 'User-Agent': 'TravelManagerApp/1.0' },
       timeout: 8000,
     });
-    const result = Array.isArray(data) ? data[0] : null;
-    if (!result) return null;
-    return { lat: Number(result.lat), lng: Number(result.lon), formattedAddress: result.display_name };
+    const results = Array.isArray(data) ? data : [];
+    if (!results.length) return null;
+    const candidates = results
+      .map((result) => ({
+        lat: Number(result.lat),
+        lng: Number(result.lon),
+        formattedAddress: result.display_name,
+      }))
+      .filter((result) => isValidCoordinates(result)
+        && (!biasCoords || isWithinDestinationRadius(result, biasCoords)));
+    if (!candidates.length) return null;
+    if (biasCoords) {
+      candidates.sort((a, b) => haversineDistanceKm(a, biasCoords) - haversineDistanceKm(b, biasCoords));
+    }
+    return candidates[0];
   } catch (err) {
     logger.warn(`LocationIQ geocode failed for "${query}"`, err.message);
     return null;
@@ -46,7 +89,7 @@ const CITY_COORDS = {
   'mangalore': { lat: 12.9141, lng: 74.8560 }, 'mathura': { lat: 27.4924, lng: 77.6737 },
   'meerut': { lat: 28.9845, lng: 77.7064 }, 'mount abu': { lat: 24.5926, lng: 72.7156 },
   'mumbai': { lat: 19.0760, lng: 72.8777 }, 'munnar': { lat: 10.0889, lng: 77.0595 },
-  'mussoorie': { lat: 30.4598, lng: 78.0664 }, 'mysore': { lat: 12.2958, lng: 76.6394 },
+  'mussoorie': { lat: 30.4598, lng: 78.0664 }, 'mysore': { lat: 12.2958, lng: 76.6394 }, 'mysuru': { lat: 12.2958, lng: 76.6394 },
   'nagpur': { lat: 21.1458, lng: 79.0882 }, 'nainital': { lat: 29.3919, lng: 79.4542 },
   'nashik': { lat: 19.9975, lng: 73.7898 }, 'noida': { lat: 28.5355, lng: 77.3910 },
   'ooty': { lat: 11.4102, lng: 76.6950 }, 'patna': { lat: 25.5941, lng: 85.1376 },
@@ -61,32 +104,106 @@ const CITY_COORDS = {
   'vijayawada': { lat: 16.5062, lng: 80.6480 }, 'visakhapatnam': { lat: 17.6868, lng: 83.2185 },
 };
 
+/**
+ * Extracts the most likely city token from a geocoding query string.
+ * Handles patterns like:
+ *   "Mysore Palace, Mysuru Sub District, India"  -> "Mysuru"
+ *   "Some Place, Mysuru, India"                  -> "Mysuru"
+ *   "Mysuru"                                     -> "Mysuru"
+ * Strategy: walk comma-separated parts right-to-left, skip "India" and
+ * anything that looks like a sub-district/state qualifier, return the
+ * first part that matches a known city or is a short clean token.
+ */
+function extractCityFromQuery(query) {
+  if (!query) return null;
+  const parts = query.split(',').map((p) => p.trim()).filter(Boolean);
+  // Walk from right, skipping country names and stripping administrative suffixes.
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i];
+    if (/^india$/i.test(part)) continue;
+    const key = part
+      .replace(/\b(sub.?district|division|district|tehsil|taluk|mandal)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    if (CITY_COORDS[key]) return part; // exact known city
+    if (/sub.?district|division|district|tehsil|taluk|mandal/i.test(part)) continue;
+    if (part.split(' ').length <= 3 && part.length <= 30) return part; // short enough to be a city
+  }
+  return parts[0] || null; // last resort: first token (the place name itself)
+}
+
 function cityFallbackCoords(city) {
   if (!city) return null;
-  return CITY_COORDS[city.toLowerCase().trim()] || null;
+  // Try the value as-is first, then strip sub-district qualifiers
+  const normalized = city.toLowerCase().trim();
+  const direct = CITY_COORDS[normalized];
+  if (direct) return direct;
+  const stripped = normalized
+    .replace(/\b(sub.?district|division|district|tehsil|taluk|mandal)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (CITY_COORDS[stripped]) return CITY_COORDS[stripped];
+  const extracted = extractCityFromQuery(city);
+  return extracted ? (CITY_COORDS[extracted.toLowerCase().trim()] || null) : null;
+}
+
+/**
+ * Builds a clean geocoding query that always ends with the canonical city
+ * name and "India", regardless of what administrative string the record's
+ * city field contains (e.g. "Mysuru Sub District" -> "Mysuru").
+ */
+function buildGeocodingQuery(placeName, recordCity, destinationCity) {
+  // Prefer the trip destination city over the record's city field because
+  // Gemini often sets city to an administrative boundary name.
+  const cityAnchor = destinationCity || recordCity || '';
+  // Strip sub-district / administrative qualifiers from the city anchor
+  const cleanCity = cityAnchor
+    .replace(/\s*(sub.?district|district|division|tehsil|taluk|mandal)\s*/gi, '')
+    .trim();
+  const parts = [placeName];
+  if (cleanCity) parts.push(cleanCity);
+  parts.push('India');
+  return parts.join(', ');
 }
 
 /**
  * Geocodes a single free-text address/place name to {lat, lng}.
- * Returns null (never throws) on failure so callers can decide their own
- * fallback - geocoding is used in places where a miss shouldn't crash trip
- * generation (e.g. one hotel out of five failing to resolve).
+ * Accepts an optional destinationCity so queries are anchored to the right
+ * city even when the record's own city field is an administrative string.
  */
-async function geocodeAddress(query) {
+async function geocodeAddress(query, {
+  destinationCity = null,
+  biasCoords = null,
+  allowCityFallback = true,
+} = {}) {
   if (!query || !query.trim()) return null;
 
-  // Geoapify is the preferred geocoder in this app; LocationIQ is retained as
-  // the secondary source because it is sometimes stronger for Indian roads and
-  // locality names.
-  const geoapifyResult = await geoapifyGeocode(query);
-  if (geoapifyResult) return geoapifyResult;
+  // If a destination city is provided, rebuild the query with a clean anchor
+  const effectiveQuery = destinationCity
+    ? buildGeocodingQuery(query.split(',')[0].trim(), null, destinationCity)
+    : query;
 
-  const locationIqResult = await locationIqGeocode(query);
-  if (locationIqResult) return locationIqResult;
+  // Resolve bias coords from destinationCity if not explicitly provided
+  const effectiveBias = biasCoords
+    || (destinationCity
+      ? cityFallbackCoords(destinationCity)
+      : cityFallbackCoords(extractCityFromQuery(effectiveQuery)));
 
-  // Static city-center fallback
-  const cityName = query.replace(/,.*$/, '').trim(); // strip ", India" suffix etc.
-  return cityFallbackCoords(cityName);
+  const geoapifyResult = await geoapifyGeocode(effectiveQuery, effectiveBias);
+  if (geoapifyResult && isWithinDestinationRadius(geoapifyResult, effectiveBias)) return geoapifyResult;
+
+  const locationIqResult = await locationIqGeocode(effectiveQuery, effectiveBias);
+  if (locationIqResult && isWithinDestinationRadius(locationIqResult, effectiveBias)) return locationIqResult;
+
+  if (!allowCityFallback) return null;
+  // Static city-center fallback — use destination city first, then extract from query
+  if (destinationCity) {
+    const cityCoords = cityFallbackCoords(destinationCity);
+    if (cityCoords) return cityCoords;
+  }
+  const extracted = extractCityFromQuery(effectiveQuery);
+  return extracted ? cityFallbackCoords(extracted) : null;
 }
 
 function getGeocodeProviderOrder() {
@@ -94,30 +211,38 @@ function getGeocodeProviderOrder() {
 }
 
 /**
- * Geocodes ONLY the given small list of candidates (per spec section 32 -
- * never geocode the whole hotels/restaurants collection). Each candidate
- * needs `name` and `city`; mutates nothing - returns a map of id -> coords.
- * Runs geocoding calls sequentially with a cap to keep API usage bounded.
+ * Geocodes a small list of candidates. Accepts an optional destinationCity
+ * so every query is anchored to the correct city.
  */
-async function geocodeCandidates(candidates, { maxCandidates = 15 } = {}) {
+async function geocodeCandidates(candidates, { maxCandidates = 15, destinationCity = null } = {}) {
   const limited = candidates.slice(0, maxCandidates);
   const results = new Map();
-
   for (const candidate of limited) {
-    const query = candidate.address
-      ? `${candidate.name}, ${candidate.address}, ${candidate.city}`
-      : `${candidate.name}, ${candidate.city}`;
-    // Sequential (not Promise.all) to stay well under Maps rate limits for a
-    // feature that's already a fallback path, not the hot path.
+    // Always anchor to destinationCity, ignoring the record's own city field
+    // which may be an administrative boundary name set by Gemini.
+    const city = destinationCity || candidate.city;
+    const biasCoords = cityFallbackCoords(city);
+    const query = buildGeocodingQuery(candidate.name, candidate.city, city);
     // eslint-disable-next-line no-await-in-loop
-    const coords = await geocodeAddress(query);
-    const resolved = coords || cityFallbackCoords(candidate.city);
-    if (resolved) {
-      results.set(String(candidate._id || candidate.sourceId), resolved);
+    const coords = await geocodeAddress(query, {
+      destinationCity: city,
+      biasCoords,
+      allowCityFallback: false,
+    });
+    if (coords && isWithinDestinationRadius(coords, biasCoords)) {
+      results.set(String(candidate._id || candidate.sourceId), coords);
     }
   }
 
   return results;
 }
 
-module.exports = { geocodeAddress, geocodeCandidates, cityFallbackCoords, getGeocodeProviderOrder };
+module.exports = {
+  geocodeAddress,
+  geocodeCandidates,
+  cityFallbackCoords,
+  getGeocodeProviderOrder,
+  isValidCoordinates,
+  isWithinDestinationRadius,
+  MAX_DESTINATION_DISTANCE_KM,
+};

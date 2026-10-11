@@ -6,7 +6,12 @@ const ApiError = require('../../utils/apiError');
 const logger = require('../../utils/logger');
 const mongoose = require('mongoose');
 
-const { geocodeAddress, cityFallbackCoords } = require('../maps/geocoding.service');
+const {
+  geocodeAddress,
+  cityFallbackCoords,
+  isValidCoordinates,
+  isWithinDestinationRadius,
+} = require('../maps/geocoding.service');
 const { getRoute } = require('../maps/routing.service');
 const { haversineDistanceKm } = require('../../utils/haversine');
 const { GOOGLE_MAPS_ROUTABLE_MODES } = require('../../constants/transport');
@@ -26,6 +31,7 @@ const { planItineraryRoutes } = require('../itinerary/routePlanner.service');
 const { getGeoapifyPlaceDetails } = require('../maps/geoapify.service');
 const { getWeatherForecast } = require('../weather/openMeteo.service');
 const { optimizeItineraryForTrip } = require('../engine/v2Optimizer.service');
+const { enrichItineraryImages } = require('./itineraryImageEnrichment.service');
 
 const INTERCITY_MODES = ['flight', 'train', 'bus', 'car'];
 
@@ -48,7 +54,7 @@ async function generateTrip(tripId, userId) {
   await trip.save();
 
   try {
-    // 0. Geocode the destination (best-effort; provider chain uses LocationIQ first).
+    // 0. Geocode the destination (Geoapify first, then LocationIQ).
     const destinationCoords = await geocodeAddress(`${trip.destination}, India`)
       || cityFallbackCoords(trip.destination);
     if (destinationCoords) {
@@ -111,7 +117,7 @@ async function generateTrip(tripId, userId) {
     const restaurants = filterCandidatesToTripAvailability(destinationRestaurants, trip, [8 * 60, 12 * 60 + 30, 19 * 60 + 30]);
 
     const selectedCandidates = await loadSelectedCandidates(trip.selectedPlaces, { pois, hotels, restaurants });
-    filterCandidatesToDestination(selectedCandidates.pois, destinationCoords, trip.destination).forEach((candidate) => {
+    filterSelectedCandidatesToDestination(selectedCandidates.pois, destinationCoords, trip.destination).forEach((candidate) => {
       if (!pois.some((item) => item.id === candidate.id)) pois.unshift(candidate);
     });
     filterCandidatesToDestination(selectedCandidates.restaurants, destinationCoords, trip.destination).forEach((candidate) => {
@@ -133,7 +139,13 @@ async function generateTrip(tripId, userId) {
     }
 
     // 5. Pre-trip generation (packing/weather/tips) - Gemini with deterministic fallback.
-    trip.preTrip = await generatePreTripSection(trip);
+    const weatherForecast = await getWeatherForecast({
+      latitude: trip.destinationLocation?.lat,
+      longitude: trip.destinationLocation?.lng,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+    });
+    trip.preTrip = await generatePreTripSection(trip, weatherForecast);
 
     // 6. Transport recommendations - Gemini estimate + Geoapify road distance for car/bike.
     const transportResult = await generateTransportSection(trip);
@@ -150,6 +162,16 @@ async function generateTrip(tripId, userId) {
     // 8. Prepend Day 1 travel leg (origin -> destination arrival + 1hr buffer)
     trip.itinerary = await prependTravelLeg(trip, rawItinerary);
     trip.itinerary = await anchorDaysToAccommodation(trip, trip.itinerary);
+    trip.itinerary = trip.itinerary.map((day) => ({
+      ...day,
+      weather: weatherForecast?.days.find((forecastDay) => forecastDay.date === day.date)
+        ? { ...weatherForecast.days.find((forecastDay) => forecastDay.date === day.date), source: weatherForecast.source }
+        : null,
+    }));
+    await enrichItineraryImages(trip.itinerary, trip.destination);
+    trip.itineraryImagesEnrichedAt = new Date();
+    trip.itineraryContentEnrichedAt = new Date();
+    trip.itineraryContentVersion = 4;
 
     trip.status = 'generated';
     trip.generationError = null;
@@ -164,13 +186,7 @@ async function generateTrip(tripId, userId) {
   }
 }
 
-async function generatePreTripSection(trip) {
-  const weather = await getWeatherForecast({
-    latitude: trip.destinationLocation?.lat,
-    longitude: trip.destinationLocation?.lng,
-    startDate: trip.startDate,
-    endDate: trip.endDate,
-  });
+async function generatePreTripSection(trip, weather = null) {
   const prompt = buildPreTripPrompt({ ...serializeTripForPrompt(trip), weatherContext: weather });
   const result = await generateValidatedJson(prompt, validatePreTrip);
 
@@ -259,13 +275,17 @@ async function generateTransportSection(trip) {
     const originCoords = await geocodeAddress(`${trip.origin}, India`);
     const destCoords = trip.destinationLocation?.lat ? trip.destinationLocation : await geocodeAddress(`${trip.destination}, India`);
     if (originCoords && destCoords) {
-      const route = await getRoute(originCoords, destCoords, 'driving');
+      const route = await getRoute(originCoords, destCoords, [], selectedRoadMode === 'bike' ? 'bicycling' : 'driving');
       if (route) {
         options = options.map((o) =>
-          GOOGLE_MAPS_ROUTABLE_MODES.includes(o.mode)
+          o.mode === selectedRoadMode
             ? { ...o, distanceKm: route.distanceKm, approxDurationHrs: route.durationMinutes / 60, source: 'geoapify' }
             : o
         );
+      } else {
+        options = options.map((option) => option.mode === selectedRoadMode
+          ? { ...option, distanceKm: null, approxDurationHrs: null }
+          : option);
       }
     }
   }
@@ -348,7 +368,9 @@ async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
       const optimizedDays = await optimizeItineraryForTrip(trip, { pois, hotels, restaurants });
       if (optimizedDays?.length) {
         logger.info(`Using v2 itinerary optimizer for trip ${trip._id}`);
-        return planItineraryRoutes(optimizedDays, { accommodation: accommodationPoint(trip), reorder: true });
+        const completeDays = ensureSelectedPlacesIncluded(optimizedDays, trip, pois);
+        await geocodeMissingActivityCoords(completeDays, trip.destination, trip.destinationLocation);
+        return planItineraryRoutes(completeDays, { accommodation: accommodationPoint(trip), reorder: true });
       }
     } catch (err) {
       logger.warn(`v2 itinerary optimizer failed for trip ${trip._id}; falling back to legacy`, err.message);
@@ -383,13 +405,97 @@ async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
     const days = await mapGeminiItineraryToTripDays(result.data, {
       pois, hotels, restaurants, destination: trip.destination, destinationCoords: trip.destinationLocation,
     });
-    return planItineraryRoutes(dedupeItineraryDays(days), { accommodation: accommodationPoint(trip) });
+    const completeDays = ensureSelectedPlacesIncluded(dedupeItineraryDays(days), trip, pois);
+    await geocodeMissingActivityCoords(completeDays, trip.destination, trip.destinationLocation);
+    return planItineraryRoutes(completeDays, { accommodation: accommodationPoint(trip), reorder: true });
   }
 
   logger.warn(`Itinerary AI generation failed for trip ${trip._id}, using deterministic fallback`, result.errors);
-  const deterministicDays = dedupeItineraryDays(buildDeterministicItinerary(trip, { pois, hotels, restaurants }));
+  const deterministicDays = ensureSelectedPlacesIncluded(
+    dedupeItineraryDays(buildDeterministicItinerary(trip, { pois, hotels, restaurants })),
+    trip,
+    pois
+  );
   await geocodeMissingActivityCoords(deterministicDays, trip.destination, trip.destinationLocation);
-    return planItineraryRoutes(deterministicDays, { accommodation: accommodationPoint(trip) });
+  return planItineraryRoutes(deterministicDays, { accommodation: accommodationPoint(trip), reorder: true });
+}
+
+function ensureSelectedPlacesIncluded(days, trip, pois) {
+  if (!days.length) return days;
+  const candidatesById = new Map(pois.map((poi) => [String(poi.id), poi]));
+  const selectedPlaces = (trip.selectedPlaces || []).filter((place) => place.type === 'poi');
+  const scheduledActivities = days.flatMap((day) => day.activities || [])
+    .filter((activity) => activity.type === 'poi');
+  const poiCounts = days.map((day) => (day.activities || []).filter((activity) => activity.type === 'poi').length);
+
+  for (const selected of selectedPlaces) {
+    const id = String(selected.refId);
+    const existing = scheduledActivities.find((activity) => (
+      String(activity.refId || '') === id
+      || (!activity.refId && normalizePlaceName(activity.name) === normalizePlaceName(selected.name))
+    ));
+    if (existing) {
+      existing.isSelected = true;
+      continue;
+    }
+    const candidate = candidatesById.get(id) || {
+      id,
+      name: selected.name,
+      source: selected.source || 'dataset',
+      city: trip.destination,
+    };
+    const mappedDays = days.map((day, dayIndex) => {
+      const points = (day.activities || [])
+        .filter((activity) => activity.type === 'poi' && Number.isFinite(activity.location?.lat) && Number.isFinite(activity.location?.lng))
+        .map((activity) => ({ lat: activity.location.lat, lng: activity.location.lng }));
+      return {
+        day,
+        count: poiCounts[dayIndex],
+        center: points.length
+          ? { lat: points.reduce((sum, point) => sum + point.lat, 0) / points.length, lng: points.reduce((sum, point) => sum + point.lng, 0) / points.length }
+          : trip.destinationLocation,
+      };
+    });
+    const minCount = Math.min(...mappedDays.map((entry) => entry.count));
+    const eligible = mappedDays.filter((entry) => entry.count === minCount);
+    const latitude = candidate.latitude ?? candidate.location?.coordinates?.[1];
+    const longitude = candidate.longitude ?? candidate.location?.coordinates?.[0];
+    const targetDay = eligible.sort((left, right) => {
+      if (Number.isFinite(latitude) && Number.isFinite(longitude) && left.center && right.center) {
+        return haversineDistanceKm(left.center, { lat: latitude, lng: longitude })
+          - haversineDistanceKm(right.center, { lat: latitude, lng: longitude });
+      }
+      return days.indexOf(left.day) - days.indexOf(right.day);
+    })[0].day;
+
+    targetDay.activities.push({
+      type: 'poi',
+      refId: id,
+      name: candidate.name || selected.name,
+      startTime: null,
+      duration: candidate.visitDurationHrs ? Math.round(candidate.visitDurationHrs * 60) : 90,
+      description: candidate.description || null,
+      category: candidate.category || candidate.poiType || 'point of interest',
+      poiType: candidate.poiType || null,
+      significance: candidate.significance || null,
+      characteristics: candidate.characteristics || null,
+      tags: candidate.tags || [],
+      imageUrl: candidate.imageUrl || null,
+      location: {
+        lat: Number.isFinite(latitude) ? latitude : null,
+        lng: Number.isFinite(longitude) ? longitude : null,
+      },
+      source: candidate.source || selected.source || 'dataset',
+      isSelected: true,
+    });
+    scheduledActivities.push(targetDay.activities[targetDay.activities.length - 1]);
+    poiCounts[days.indexOf(targetDay)] += 1;
+  }
+  return days;
+}
+
+function normalizePlaceName(name) {
+  return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 /** Converts Gemini's validated day/activity shape into the Trip model's day schema, resolving refIds and coordinates. */
@@ -425,6 +531,10 @@ async function mapGeminiItineraryToTripDays(itineraryData, { pois, hotels, resta
         description: details?.description ?? dataset?.description ?? null,
         category: dataset?.category ?? dataset?.poiType ?? (activity.type === 'restaurant' ? 'restaurant' : activity.type),
         poiType: dataset?.poiType ?? null,
+        significance: dataset?.significance ?? null,
+        characteristics: dataset?.characteristics ?? null,
+        tags: dataset?.tags ?? [],
+        city: dataset?.city ?? destination,
         website: details?.website ?? dataset?.website ?? null,
         phone: details?.phone ?? dataset?.phone ?? null,
         imageUrl: details?.imageUrl ?? dataset?.imageUrl ?? null,
@@ -457,8 +567,8 @@ async function mapGeminiItineraryToTripDays(itineraryData, { pois, hotels, resta
 
 /**
  * For every poi/restaurant/hotel activity that has no coordinates yet,
- * attempt to geocode "<name>, <destination>" via the geocoding chain
- * (Geoapify → LocationIQ → static city fallback). Mutates in place.
+ * Resolve missing or out-of-destination coordinates. Unverified places are
+ * left unlocated rather than being assigned the destination's city-center pin.
  * Runs sequentially to stay within API rate limits.
  */
 async function geocodeMissingActivityCoords(days, destination, destinationCoords = null) {
@@ -466,13 +576,17 @@ async function geocodeMissingActivityCoords(days, destination, destinationCoords
   for (const day of days) {
     for (const activity of day.activities) {
       if (!MAPPABLE.includes(activity.type)) continue;
-      const existing = typeof activity.location.lat === 'number' && typeof activity.location.lng === 'number'
+      const existing = isValidCoordinates(activity.location)
         ? activity.location
         : null;
-      if (existing) continue;
+      if (existing && isWithinDestinationRadius(existing, destinationCoords)) continue;
       // eslint-disable-next-line no-await-in-loop
-      const coords = await geocodeAddress(`${activity.name}, ${destination}, India`);
-      if (coords) {
+      const coords = await geocodeAddress(`${activity.name}, ${destination}, India`, {
+        destinationCity: destination,
+        biasCoords: destinationCoords,
+        allowCityFallback: false,
+      });
+      if (coords && isWithinDestinationRadius(coords, destinationCoords)) {
         activity.location = { lat: coords.lat, lng: coords.lng };
       } else {
         activity.location = { lat: null, lng: null };
@@ -611,7 +725,8 @@ async function loadSelectedCandidates(selectedPlaces = [], { pois, hotels, resta
     id: String(poi._id), name: poi.name, city: poi.city, category: poi.category, poiType: poi.poiType,
     significance: poi.significance, characteristics: poi.characteristics, tags: poi.tags,
     googleRating: poi.googleRating, visitDurationHrs: poi.visitDurationHrs,
-    latitude: poi.latitude, longitude: poi.longitude, openingTime: poi.openingTime,
+    latitude: poi.latitude ?? poi.location?.coordinates?.[1] ?? null,
+    longitude: poi.longitude ?? poi.location?.coordinates?.[0] ?? null, openingTime: poi.openingTime,
     closingTime: poi.closingTime, weeklyOff: poi.weeklyOff, description: poi.description,
     source: 'dataset',
   }));
@@ -639,6 +754,18 @@ function filterCandidatesToDestination(candidates, destinationCoords, destinatio
     const longitude = Number(candidate.longitude);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
     return haversineDistanceKm(destinationCoords, { lat: latitude, lng: longitude }) <= MAX_DESTINATION_RADIUS_KM;
+  });
+}
+
+function filterSelectedCandidatesToDestination(candidates, destinationCoords, destination) {
+  const destinationCity = canonicalizeCityName(destination) || null;
+  return candidates.filter((candidate) => {
+    if (candidate.city && destinationCity && canonicalizeCityName(candidate.city) !== destinationCity) return false;
+    const latitude = Number(candidate.latitude);
+    const longitude = Number(candidate.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return true;
+    if (!destinationCoords || typeof destinationCoords.lat !== 'number' || typeof destinationCoords.lng !== 'number') return true;
+    return haversineDistanceKm(destinationCoords, { lat: latitude, lng: longitude }) <= 120;
   });
 }
 
@@ -694,8 +821,17 @@ async function prependTravelLeg(trip, itinerary) {
   if (!itinerary.length) return itinerary;
 
   // Estimate travel duration from transport section
-  const transportOption = (trip.transport || []).find((t) => t.approxDurationHrs != null);
-  const travelHrs = transportOption?.approxDurationHrs ?? estimateTravelHrs(trip.origin, trip.destination);
+  const selectedMode = trip.selectedTransportMode || trip.transportPreference;
+  const transportOptions = [...(trip.intercityTransport || []), ...(trip.transport || [])];
+  const selectedOption = transportOptions.find((option) => option.mode === selectedMode);
+  const transportOption = selectedOption || transportOptions.find((option) => option.approxDurationHrs != null);
+  const hasSelectedModeEstimate = selectedOption?.approxDurationHrs != null;
+  const travelHrs = hasSelectedModeEstimate
+    ? selectedOption.approxDurationHrs
+    : selectedMode
+      ? estimateTravelHrs(trip.origin, trip.destination)
+      : transportOption?.approxDurationHrs ?? estimateTravelHrs(trip.origin, trip.destination);
+  const distanceKm = transportOption?.distanceKm ?? null;
   const departureMinutes = 6 * 60; // assume 06:00 departure
   const arrivalMinutes = departureMinutes + Math.round(travelHrs * 60);
   const bufferMinutes = 60; // 1hr check-in/settle buffer
@@ -710,6 +846,7 @@ async function prependTravelLeg(trip, itinerary) {
     day1.activities = day1.activities.map((a) => ({
       ...a,
       startTime: a.startTime ? minutesToTime(timeToMinutes(a.startTime) + shift) : a.startTime,
+      endTime: a.endTime ? minutesToTime(timeToMinutes(a.endTime) + shift) : a.endTime,
     }));
   }
 
@@ -721,7 +858,13 @@ async function prependTravelLeg(trip, itinerary) {
     name: `${trip.origin} → ${trip.destination}`,
     startTime: minutesToTime(departureMinutes),
     duration: Math.round(travelHrs * 60),
-    notes: `Approx. ${travelHrs.toFixed(1)} hrs travel. Arrive ~${minutesToTime(arrivalMinutes)}. Allow 1 hr to check in and settle.`,
+    notes: [
+      distanceKm != null ? `${distanceKm.toFixed(1)} km` : null,
+      `${transportOption?.source === 'geoapify' ? 'Routed' : 'Estimated'} ${selectedMode || transportOption?.mode || 'intercity'} trip. Arrive ~${minutesToTime(arrivalMinutes)}; allow 1 hr to check in.`,
+    ].filter(Boolean).join(' · '),
+    distanceKm,
+    travelMode: selectedMode || transportOption?.mode || null,
+    isEstimated: transportOption?.source !== 'geoapify',
     location: originCoords ? { lat: originCoords.lat, lng: originCoords.lng } : { lat: null, lng: null },
     source: 'gemini',
   };
@@ -760,5 +903,7 @@ module.exports = {
   buildBudgetSummary,
   anchorDaysToAccommodation,
   ensureIntercityTransportOptions,
+  ensureSelectedPlacesIncluded,
   buildPreTripFallback,
+  geocodeMissingActivityCoords,
 };

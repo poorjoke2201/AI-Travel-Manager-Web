@@ -2,7 +2,7 @@ const axios = require('axios');
 const POI = require('../../models/POI');
 const Restaurant = require('../../models/Restaurant');
 const { geocodeAddress } = require('../maps/geocoding.service');
-const { searchGeoapifyPlaces, getGeoapifyPlaceDetails } = require('../maps/geoapify.service');
+const { searchGeoapifyPlaces } = require('../maps/geoapify.service');
 const logger = require('../../utils/logger');
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
@@ -45,17 +45,14 @@ async function backfillCandidates(trip, { poiCount = 0, restaurantCount = 0 } = 
 async function discoverGeoapify(coordinates, type, city) {
   const categories = type === 'restaurant'
     ? ['catering.restaurant', 'catering.cafe', 'catering.fast_food', 'catering.food_court']
-    : ['tourism.sights', 'tourism.attraction', 'tourism.museum', 'heritage', 'leisure.park', 'leisure.garden', 'amenity.place_of_worship'];
+    : ['tourism.sights', 'tourism.attraction', 'tourism.museum', 'leisure.park', 'leisure.garden', 'religion.place_of_worship'];
   const features = await searchGeoapifyPlaces({ ...coordinates, radiusKm: 25, categories });
   const results = [];
 
   for (const feature of features.slice(0, 50)) {
-    const details = feature.properties?.place_id
-      ? await getGeoapifyPlaceDetails(feature.properties.place_id)
-      : null;
     const candidate = type === 'restaurant'
-      ? normalizeRestaurant(feature, details, city)
-      : normalizePoi(feature, details, city);
+      ? normalizeRestaurant(feature, null, city)
+      : normalizePoi(feature, null, city);
     if (!candidate) continue;
     const saved = type === 'restaurant' ? await persistRestaurant(candidate) : await persistPoi(candidate);
     results.push(type === 'restaurant' ? restaurantCandidate(saved) : poiCandidate(saved));
@@ -142,20 +139,40 @@ function normalizeRestaurant(feature, details, city) {
 
 async function persistPoi(candidate) {
   if (!candidate?.name) return null;
-  return POI.findOneAndUpdate(
-    { sourceRef: candidate.sourceRef },
-    { $set: { ...candidate, location: { type: 'Point', coordinates: [candidate.longitude, candidate.latitude] }, lastUpdated: new Date() }, $setOnInsert: { sourceId: stableSourceId(candidate.sourceRef), country: 'India' } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  ).lean();
+  return persistCandidate(POI, { sourceRef: candidate.sourceRef }, candidate, { lastUpdated: new Date() }, { country: 'India' });
 }
 
 async function persistRestaurant(candidate) {
   if (!candidate?.name) return null;
-  return Restaurant.findOneAndUpdate(
-    { city: candidate.city, name: candidate.name },
-    { $set: { ...candidate, location: { type: 'Point', coordinates: [candidate.longitude, candidate.latitude] }, geocodedAt: new Date() }, $setOnInsert: { sourceId: stableSourceId(candidate.sourceRef) } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  ).lean();
+  return persistCandidate(Restaurant, { city: candidate.city, name: candidate.name }, candidate, { geocodedAt: new Date() });
+}
+
+async function persistCandidate(Model, filter, candidate, timestamp, insertDefaults = {}) {
+  const location = { type: 'Point', coordinates: [candidate.longitude, candidate.latitude] };
+  const update = (sourceId) => ({
+    $set: { ...candidate, location, ...timestamp },
+    $setOnInsert: { ...insertDefaults, sourceId },
+  });
+  let sourceId = stableSourceId(candidate.sourceRef);
+
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      return await Model.findOneAndUpdate(filter, update(sourceId), {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      }).lean();
+    } catch (error) {
+      if (error.code !== 11000 || !/sourceId_1/.test(error.message)) throw error;
+      const collision = await Model.findOne({ sourceId }).select('_id').lean();
+      const existing = await Model.findOne(filter).lean();
+      if (existing) return existing;
+      if (!collision) throw error;
+      sourceId = sourceId >= 2147483646 ? 1 : sourceId + 1;
+    }
+  }
+
+  throw new Error(`Could not allocate a unique restaurant sourceId for "${candidate.name}".`);
 }
 
 function poiCandidate(poi) {
@@ -181,7 +198,7 @@ function parseOpeningHours(value) {
 function stableSourceId(value) {
   let hash = 0;
   for (const character of String(value || 'unknown')) hash = ((hash << 5) - hash + character.charCodeAt(0)) | 0;
-  return Math.abs(hash) || Math.floor(Math.random() * 9000000) + 1000000;
+  return (Math.abs(hash) % 2147483646) + 1;
 }
 
 function mergeUnique(existing, additions) {

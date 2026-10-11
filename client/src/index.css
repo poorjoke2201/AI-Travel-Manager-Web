@@ -236,6 +236,13 @@
   opacity: 0.42;
 }
 
+.cesium-preview-shell:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  border-radius: 0;
+}
+
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   border-radius: 12px;

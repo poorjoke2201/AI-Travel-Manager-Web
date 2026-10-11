@@ -42,8 +42,12 @@ function validate(values) {
   return errors;
 }
 
-export default function TripForm({ onSubmit, isSubmitting, submitError }) {
-  const [values, setValues] = useState(DEFAULT_VALUES);
+export default function TripForm({ onSubmit, isSubmitting, submitError, initialValues = {} }) {
+  const [values, setValues] = useState(() => ({
+    ...DEFAULT_VALUES,
+    ...initialValues,
+    travellers: { ...DEFAULT_VALUES.travellers, ...initialValues.travellers },
+  }));
   const [errors, setErrors] = useState({});
 
   function handleSubmit(e) {

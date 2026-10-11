@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ItineraryHeader from '../components/itinerary/ItineraryHeader';
 import ItineraryTabs from '../components/itinerary/ItineraryTabs';
@@ -6,6 +6,7 @@ import PreTripSection from '../components/itinerary/PreTripSection';
 import TransportSection from '../components/itinerary/TransportSection';
 import DayItinerary from '../components/itinerary/DayItinerary';
 import ItineraryMap from '../components/itinerary/ItineraryMap';
+import ActivityPhotoGallery from '../components/itinerary/ActivityPhotoGallery';
 import HotelCard from '../components/itinerary/HotelCard';
 import Loader from '../components/common/Loader';
 import ErrorMessage from '../components/common/ErrorMessage';
@@ -13,6 +14,7 @@ import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
 import BudgetSection from '../components/itinerary/BudgetSection';
 import { useTrip } from '../hooks/useTrips';
+import * as tripService from '../services/tripService';
 import { FEATURE_FLAGS } from '../config/features';
 import { TripViewProvider, useTripView } from '../context/TripViewContext';
 
@@ -28,11 +30,13 @@ function TripDetailsContent({ initialTab = 'overview' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { trip, isLoading, error, fetchTrip, regenerate, replaceActivity, remove } = useTrip(id);
-  const { selectedDay, setSelectedDay, setSelectedStopId } = useTripView();
+  const { selectedDay, setSelectedDay, selectedStopId, setSelectedStopId } = useTripView();
   const [activeTab, setActiveTab] = useState(initialTab);
   const showMemberTab = FEATURE_FLAGS.FEATURE_GROUP_TRIPS && Boolean(trip?.isGroupTrip || trip?.groupMembers?.length);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [photoGallery, setPhotoGallery] = useState(null);
+  const imageEnrichmentAttempts = useRef(new Set());
 
   useEffect(() => {
     fetchTrip();
@@ -53,6 +57,26 @@ function TripDetailsContent({ initialTab = 'overview' }) {
     if (selectedDay > maxDay) setSelectedDay(maxDay);
   }, [trip, selectedDay, setSelectedDay]);
 
+  useEffect(() => {
+    if (activeTab !== 'itinerary' || !trip?._id || (trip.itineraryContentVersion || 0) >= 4) return;
+    if (imageEnrichmentAttempts.current.has(trip._id)) return;
+
+    imageEnrichmentAttempts.current.add(trip._id);
+    let isCurrent = true;
+    tripService.enrichTripImages(trip._id)
+      .then(() => {
+        if (isCurrent) return fetchTrip();
+        return undefined;
+      })
+      .catch((enrichmentError) => {
+        console.warn('Unable to enrich itinerary place photos:', enrichmentError.message);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [activeTab, fetchTrip, trip?._id, trip?.itineraryContentVersion]);
+
   const itineraryView = useMemo(() => {
     if (!trip?.itinerary?.length) return null;
     return { day: trip.itinerary.find((d) => d.day === selectedDay) || trip.itinerary[0] };
@@ -70,6 +94,16 @@ function TripDetailsContent({ initialTab = 'overview' }) {
   async function handleDelete() {
     await remove();
     navigate('/dashboard');
+  }
+
+  function handleSelectActivity(stopId, day) {
+    setSelectedDay(day);
+    setSelectedStopId(stopId);
+  }
+
+  function handleSelectDay(day) {
+    setSelectedDay(day);
+    setSelectedStopId(null);
   }
 
   if (isLoading && !trip) return <Loader label="Loading trip..." />;
@@ -118,44 +152,67 @@ function TripDetailsContent({ initialTab = 'overview' }) {
       {activeTab === 'transport' && <TransportSection transport={trip.transport} intercityTransport={trip.intercityTransport} intracityTransport={trip.intracityTransport} />}
 
       {activeTab === 'itinerary' && (
-        FEATURE_FLAGS.FEATURE_SPLIT_VIEW ? (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.45fr)]">
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(19rem,0.78fr)_minmax(0,1.22fr)]">
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="tag-chip tag-chip-active">All days</button>
+                <button type="button" className="rounded-full border border-transparent bg-stone-100 px-3 py-1 text-sm text-ink-600">All days</button>
                 {trip.itinerary?.map((day) => (
                   <button
                     key={day.day}
                     type="button"
                     onClick={() => { setSelectedDay(day.day); setSelectedStopId(null); }}
-                    className={`tag-chip ${selectedDay === day.day ? 'tag-chip-active' : ''}`}
+                    className={`rounded-full border border-transparent px-3 py-1 text-sm transition-colors ${
+                      selectedDay === day.day
+                        ? 'bg-ocean text-white'
+                        : 'bg-stone-100 text-ink-600 hover:bg-stone-200'
+                    }`}
                   >
                     Day {day.day}
                   </button>
                 ))}
               </div>
               {itineraryView ? (
-                <DayItinerary day={itineraryView.day} onReplaceActivity={replaceActivity} />
+                <DayItinerary
+                  day={itineraryView.day}
+                  onReplaceActivity={replaceActivity}
+                  onSelectActivity={handleSelectActivity}
+                  onOpenPhotos={(activity, initialIndex = 0) => setPhotoGallery({ activity, initialIndex })}
+                  backTo={`/trip/${id}/itinerary`}
+                  destination={trip.destination}
+                />
               ) : (
                 <p className="text-ink-500">No itinerary generated yet.</p>
               )}
             </div>
-            <div className="min-h-[420px] xl:sticky xl:top-4">
-              <ItineraryMap days={trip.itinerary || []} selectedDay={selectedDay} onSelectDay={setSelectedDay} accommodation={trip.recommendedHotel} />
+            <div className="min-w-0 lg:sticky lg:top-4">
+              <ItineraryMap
+                days={trip.itinerary || []}
+                selectedDay={selectedDay}
+                onSelectDay={handleSelectDay}
+                accommodation={trip.recommendedHotel}
+                selectedStopId={selectedStopId}
+                onSelectStop={setSelectedStopId}
+                onOpenPhotos={(activity, initialIndex = 0) => setPhotoGallery({ activity, initialIndex })}
+                destination={trip.destination}
+                backTo={`/trip/${id}/itinerary`}
+              />
             </div>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {trip.itinerary?.length ? (
-              trip.itinerary.map((day) => <DayItinerary key={day.day} day={day} onReplaceActivity={replaceActivity} />)
-            ) : (
-              <p className="text-ink-500">No itinerary generated yet.</p>
-            )}
-          </div>
-        )
       )}
 
-      {activeTab === 'map' && <ItineraryMap days={trip.itinerary || []} selectedDay={selectedDay} onSelectDay={setSelectedDay} accommodation={trip.recommendedHotel} />}
+      {activeTab === 'map' && (
+        <ItineraryMap
+          days={trip.itinerary || []}
+          selectedDay={selectedDay}
+          onSelectDay={handleSelectDay}
+          accommodation={trip.recommendedHotel}
+          selectedStopId={selectedStopId}
+          onSelectStop={setSelectedStopId}
+          onOpenPhotos={(activity, initialIndex = 0) => setPhotoGallery({ activity, initialIndex })}
+          destination={trip.destination}
+          backTo={`/trip/${id}/itinerary`}
+        />
+      )}
       {activeTab === 'member' && (
         <div className="card space-y-4">
           <div className="flex items-center justify-between gap-3">
@@ -184,6 +241,15 @@ function TripDetailsContent({ initialTab = 'overview' }) {
         </div>
       )}
       {activeTab === 'budget' && <BudgetSection tripId={id} />}
+
+      {photoGallery && (
+        <ActivityPhotoGallery
+          key={`${photoGallery.activity.refId || photoGallery.activity.name}-${photoGallery.initialIndex}`}
+          activity={photoGallery.activity}
+          initialIndex={photoGallery.initialIndex}
+          onClose={() => setPhotoGallery(null)}
+        />
+      )}
 
       <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="Delete this trip?">
         <p className="mb-6 text-sm text-ink-500">

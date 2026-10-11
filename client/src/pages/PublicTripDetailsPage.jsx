@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import DayItinerary from '../components/itinerary/DayItinerary';
 import ItineraryMap from '../components/itinerary/ItineraryMap';
+import ActivityPhotoGallery from '../components/itinerary/ActivityPhotoGallery';
 import Loader from '../components/common/Loader';
 import ErrorMessage from '../components/common/ErrorMessage';
 import * as publicTripService from '../services/publicTripService';
@@ -12,6 +13,9 @@ export default function PublicTripDetailsPage() {
   const { id } = useParams();
   const [trip, setTrip] = useState(null);
   const [error, setError] = useState('');
+  const [selectedDay, setSelectedDay] = useState(1);
+  const [selectedStopId, setSelectedStopId] = useState(null);
+  const [photoGallery, setPhotoGallery] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -45,13 +49,46 @@ export default function PublicTripDetailsPage() {
       <div className="mt-8 space-y-6">
         {trip.itinerary?.length ? (
           <>
-            <ItineraryMap days={trip.itinerary} accommodation={trip.recommendedHotel} />
-            {trip.itinerary.map((day) => <DayItinerary key={day.day} day={day} />)}
+            <ItineraryMap
+              days={trip.itinerary}
+              selectedDay={selectedDay}
+              onSelectDay={(day) => {
+                setSelectedDay(day);
+                setSelectedStopId(null);
+              }}
+              accommodation={trip.recommendedHotel}
+              selectedStopId={selectedStopId}
+              onSelectStop={setSelectedStopId}
+              onOpenPhotos={(activity, initialIndex = 0) => setPhotoGallery({ activity, initialIndex })}
+              destination={trip.destination}
+              backTo={`/public-trips/${trip._id}`}
+            />
+            {trip.itinerary.map((day) => (
+              <DayItinerary
+                key={day.day}
+                day={day}
+                onSelectActivity={(stopId, activityDay) => {
+                  setSelectedDay(activityDay);
+                  setSelectedStopId(stopId);
+                }}
+                onOpenPhotos={(activity, initialIndex = 0) => setPhotoGallery({ activity, initialIndex })}
+                backTo={`/public-trips/${trip._id}`}
+                destination={trip.destination}
+              />
+            ))}
           </>
         ) : (
           <p className="text-ink-500">This shared trip has no itinerary yet.</p>
         )}
       </div>
+      {photoGallery && (
+        <ActivityPhotoGallery
+          key={`${photoGallery.activity.refId || photoGallery.activity.name}-${photoGallery.initialIndex}`}
+          activity={photoGallery.activity}
+          initialIndex={photoGallery.initialIndex}
+          onClose={() => setPhotoGallery(null)}
+        />
+      )}
     </div>
   );
 }

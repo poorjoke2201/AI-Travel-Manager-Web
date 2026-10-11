@@ -1,7 +1,8 @@
-const TRAVEL_STYLES = ['budget', 'moderate', 'luxury'];
-const TRIP_TYPES = ['solo', 'couple', 'family', 'friends', 'business'];
-const PACE_OPTIONS = ['relaxed', 'balanced', 'packed'];
-const ACCOMMODATION_PREFERENCES = ['hotel', 'hostel', 'resort', 'budget', 'luxury', 'any'];
+const options = require('../../../shared/travelPreferences.json');
+const TRAVEL_STYLES = options.travelStyles.map(({ value }) => value);
+const TRIP_TYPES = options.tripTypes.map(({ value }) => value);
+const PACE_OPTIONS = options.paceOptions.map(({ value }) => value);
+const ACCOMMODATION_PREFERENCES = options.accommodationPreferences.map(({ value }) => value);
 const TRIP_STATUS = ['draft', 'generating', 'generated', 'failed'];
 
 // Pace -> rough max activities/day, used by itineraryOptimizer.service.js

@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TripForm from '../components/trip/TripForm';
 import TripGenerationLoader from '../components/trip/TripGenerationLoader';
 import TripDiscoveryOptions from '../components/trip/TripDiscoveryOptions';
+import Loader from '../components/common/Loader';
+import ErrorMessage from '../components/common/ErrorMessage';
 import * as tripService from '../services/tripService';
+import * as profileService from '../services/profileService';
 import { useTrips } from '../hooks/useTrips';
 
 export default function CreateTripPage() {
@@ -18,6 +21,23 @@ export default function CreateTripPage() {
   const [selectedPlaces, setSelectedPlaces] = useState([]);
   const [error, setError] = useState(null);
   const [headerParallax, setHeaderParallax] = useState({ x: 0, y: 0 });
+  const [savedPreferences, setSavedPreferences] = useState(null);
+  const [preferencesError, setPreferencesError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    profileService.getProfile()
+      .then((profile) => {
+        if (active) setSavedPreferences(profile.preferences || {});
+      })
+      .catch((loadError) => {
+        if (active) {
+          setPreferencesError(loadError.message || 'Saved preferences could not be loaded.');
+          setSavedPreferences({});
+        }
+      });
+    return () => { active = false; };
+  }, []);
 
   function normalizeSelectedPlaces(places = []) {
     return places.map((place) => ({
@@ -95,6 +115,10 @@ export default function CreateTripPage() {
     return <TripGenerationLoader />;
   }
 
+  if (savedPreferences === null) {
+    return <Loader label="Loading saved travel preferences..." />;
+  }
+
   if (discovery) {
     return (
       <div className="mx-auto max-w-5xl">
@@ -125,6 +149,7 @@ export default function CreateTripPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
+      {preferencesError ? <ErrorMessage message={`Saved travel preferences were not loaded: ${preferencesError}`} /> : null}
       <div
         className="mb-10 flex items-center gap-3 border-b border-stone-300 pb-7 sm:gap-5"
         onMouseMove={handleHeaderParallax}
@@ -144,7 +169,12 @@ export default function CreateTripPage() {
           style={{ transform: `translate(${headerParallax.x * 9}px, ${headerParallax.y * 7}px) rotate(${headerParallax.x * 4}deg)` }}
         />
       </div>
-      <TripForm onSubmit={handleSubmit} isSubmitting={isDiscovering} submitError={error} />
+      <TripForm
+        initialValues={savedPreferences}
+        onSubmit={handleSubmit}
+        isSubmitting={isDiscovering}
+        submitError={error}
+      />
     </div>
   );
 }

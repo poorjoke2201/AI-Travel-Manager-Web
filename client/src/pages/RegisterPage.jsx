@@ -11,6 +11,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [avatar, setAvatar] = useState('🧭');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -20,9 +21,9 @@ export default function RegisterPage() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await authService.register({ phoneNumber, username, avatar });
+      await authService.register({ phoneNumber, username, password, avatar });
       navigate('/verify-otp', {
-        state: { phoneNumber, mode: 'register', pendingProfile: { username, avatar } },
+        state: { phoneNumber, mode: 'register', pendingProfile: { username, password, avatar } },
       });
     } catch (err) {
       setError(err.message);
@@ -46,6 +47,17 @@ export default function RegisterPage() {
           minLength={3}
           maxLength={30}
           required
+        />
+        <Input
+          label="Password"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          minLength={8}
+          maxLength={72}
         />
         <AvatarSelector value={avatar} onChange={setAvatar} />
         {error && <ErrorMessage message={error} />}

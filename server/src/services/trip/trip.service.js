@@ -1,4 +1,5 @@
 const Trip = require('../../models/Trip');
+const receiptStorage = require('../expenses/receiptStorage.service');
 const User = require('../../models/User');
 const ApiError = require('../../utils/apiError');
 const { recommendPOIs } = require('./../recommendation/poiRecommendation.service');
@@ -7,6 +8,8 @@ const { recommendHotels } = require('./../recommendation/hotelRecommendation.ser
 const { haversineDistanceKm } = require('../../utils/haversine');
 const { planItineraryRoutes } = require('../itinerary/routePlanner.service');
 const { canonicalizeCityName } = require('../destination/destinationResolver.service');
+const { resolveDestinationLeadImage } = require('./itineraryImageEnrichment.service');
+const activityService = require('../activity/activity.service');
 
 function normalizePhoneNumber(value) {
   if (typeof value !== 'string') return null;
@@ -47,14 +50,29 @@ function normalizeGroupTripMembers(members = []) {
     }
 
     const phoneNumber = normalizePhoneNumber(member.phoneNumber);
-    if (!phoneNumber || seen.has(`phone:${phoneNumber}`)) continue;
-    seen.add(`phone:${phoneNumber}`);
+    if (phoneNumber) {
+      if (seen.has(`phone:${phoneNumber}`)) continue;
+      seen.add(`phone:${phoneNumber}`);
+      normalized.push({
+        phoneNumber,
+        name: member.name ?? null,
+        email: member.email ?? null,
+        role: member.role || 'member',
+        status: member.status || 'pending',
+        joinedAt: member.joinedAt ?? null,
+      });
+      continue;
+    }
+
+    const name = typeof member.name === 'string' ? member.name.trim() : '';
+    const nameKey = name.toLowerCase();
+    if (!name || seen.has(`name:${nameKey}`)) continue;
+    seen.add(`name:${nameKey}`);
     normalized.push({
-      phoneNumber,
-      name: member.name ?? null,
+      name,
       email: member.email ?? null,
       role: member.role || 'member',
-      status: member.status || 'pending',
+      status: 'accepted',
       joinedAt: member.joinedAt ?? null,
     });
   }
@@ -76,7 +94,7 @@ async function createDraftTrip(userId, payload) {
   const isGroupTrip = Boolean(payload.isGroupTrip || groupMembers.length || totalTravelers > 1);
   const destination = canonicalizeCityName(payload.destination);
 
-  return Trip.create({
+  const trip = await Trip.create({
     ...payload,
     destination,
     userId,
@@ -85,6 +103,16 @@ async function createDraftTrip(userId, payload) {
     isGroupTrip,
     groupMembers,
   });
+  await activityService.recordBestEffort(userId, 'trip_created', {
+    tripId: trip._id,
+    meta: {
+      tripName: trip.tripName,
+      destination: trip.destination,
+    },
+    createdAt: trip.createdAt,
+    dedupeKey: `trip-created:${trip._id}`,
+  });
+  return trip;
 }
 
 async function listUserTrips(userId) {
@@ -119,6 +147,10 @@ async function getTripForViewing(tripId, userId) {
 async function updateTrip(tripId, userId, updates) {
   const trip = await getTripById(tripId, userId);
 
+  if (updates.destination && updates.destination !== trip.destination) {
+    trip.coverImageUrl = null;
+    trip.coverImageResolvedAt = null;
+  }
   if (updates.startDate || updates.endDate) {
     const startDate = updates.startDate || trip.startDate;
     const endDate = updates.endDate || trip.endDate;
@@ -130,8 +162,19 @@ async function updateTrip(tripId, userId, updates) {
   return trip;
 }
 
+async function ensureTripCoverImage(tripId, userId) {
+  const trip = await getTripById(tripId, userId);
+  if (trip.coverImageUrl || trip.coverImageResolvedAt) return trip.coverImageUrl;
+
+  trip.coverImageUrl = await resolveDestinationLeadImage(trip.destination);
+  trip.coverImageResolvedAt = new Date();
+  await trip.save();
+  return trip.coverImageUrl;
+}
+
 async function deleteTrip(tripId, userId) {
   const trip = await getTripById(tripId, userId);
+  await receiptStorage.deleteTripReceipts(trip._id);
   await trip.deleteOne();
 }
 
@@ -161,13 +204,32 @@ async function replaceItineraryActivity(tripId, userId, dayNumber, activityIndex
   const replacement = alternatives[0];
   if (!replacement) throw ApiError.notFound('No similar place is available for replacement.');
 
+  const previousPlaceName = current.name;
   current.name = replacement.name;
   current.refId = replacement.source === 'dataset' ? replacement.id : null;
   current.source = replacement.source || 'dataset';
+  current.category = replacement.category || replacement.poiType || current.type;
+  current.poiType = replacement.poiType || null;
+  current.significance = replacement.significance || null;
+  current.characteristics = replacement.characteristics || null;
+  current.tags = replacement.tags || [];
+  current.description = replacement.description || null;
+  current.imageUrl = replacement.imageUrl || null;
   current.location = { lat: replacement.latitude ?? null, lng: replacement.longitude ?? null };
   current.notes = strategy === 'farther' ? 'Replaced with a farther alternative.' : 'Replaced with a nearby alternative.';
+  trip.itineraryImagesEnrichedAt = null;
+  trip.itineraryContentEnrichedAt = null;
+  trip.itineraryContentVersion = 0;
   await planItineraryRoutes(trip.itinerary);
   await trip.save();
+  await activityService.recordBestEffort(userId, 'place_replaced', {
+    tripId: trip._id,
+    meta: {
+      tripName: trip.tripName,
+      previousPlaceName,
+      placeName: replacement.name,
+    },
+  });
   return trip;
 }
 
@@ -257,6 +319,7 @@ module.exports = {
   getTripById,
   getTripForViewing,
   updateTrip,
+  ensureTripCoverImage,
   deleteTrip,
   replaceItineraryActivity,
   acceptTripInvite,

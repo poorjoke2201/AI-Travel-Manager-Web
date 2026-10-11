@@ -1,4 +1,5 @@
-const TRANSPORT_MODES = ['flight', 'train', 'bus', 'car', 'bike', 'any'];
+const options = require('../../../shared/travelPreferences.json');
+const TRANSPORT_MODES = options.transportModes.map(({ value }) => value);
 
 // Geoapify is the canonical routing provider for road-based modes.
 const GEOAPIFY_ROUTABLE_MODES = ['car', 'bike'];

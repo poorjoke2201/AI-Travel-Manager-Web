@@ -1,13 +1,16 @@
 const { geocodeAddress, cityFallbackCoords } = require('../maps/geocoding.service');
 const { getCandidatePOIs } = require('../recommendation/candidate.service');
+const { candidateQualityScore } = require('../recommendation/scoring.service');
 const { computeTransitionScore } = require('./transitionModel.service');
+const { clusterPOIsByDay } = require('../itinerary/clustering.service');
+const { sequenceDayPOIs } = require('../itinerary/sequencing.service');
 
 const DEFAULT_WEIGHTS = {
-  preference: 0.42,
-  quality: 0.22,
-  timeFit: 0.18,
+  preference: 0.2,
+  quality: 0.5,
+  timeFit: 0.15,
   social: 0.10,
-  penalty: 0.20,
+  penalty: 0.05,
 };
 
 const DAY_START_MINUTES = 9 * 60;
@@ -38,7 +41,9 @@ function scorePoiForV2Detailed(poi, trip, slotMinutes = 12 * 60, previousCategor
   }, 0)
     / Math.max(1, (trip.placePreferences || []).length || 1);
 
-  const qualityScore = Number.isFinite(poi.popularityScore) ? clamp(poi.popularityScore, 0, 1) : 0.5;
+  const qualityScore = Number.isFinite(poi.qualityScore)
+    ? clamp(poi.qualityScore, 0, 1)
+    : candidateQualityScore(poi);
   const timeProfile = {
     heritage: [0.4,0.6,0.8,0.7,0.5,0.4,0.2,0.2,0.2,0.3,0.4,0.6,0.8,0.8,0.7,0.6,0.5,0.4,0.4,0.5,0.6,0.7,0.8,0.5],
     nature: [0.3,0.3,0.4,0.5,0.6,0.7,0.8,0.8,0.9,0.8,0.7,0.5,0.4,0.4,0.5,0.6,0.7,0.8,0.8,0.7,0.6,0.5,0.4,0.3],
@@ -123,7 +128,7 @@ function buildActivity(type, name, startMinutes, durationMinutes, extras = {}) {
 }
 
 function candidateKey(candidate) {
-  return String(candidate.name || candidate.id || candidate.sourceRef || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return String(candidate.id || candidate.sourceRef || candidate.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 function uniqueCandidates(candidates = []) {
@@ -150,13 +155,20 @@ async function optimizeItineraryForTrip(trip, { pois = [], hotels = [], restaura
   const forcedPois = baseCandidatePool.filter((poi) => selectedPoiIds.has(String(poi.id)));
   const forcedRestaurants = restaurants.filter((restaurant) => selectedRestaurantIds.has(String(restaurant.id)));
   const candidatePool = uniqueCandidates([...forcedPois, ...baseCandidatePool.filter((poi) => !selectedPoiIds.has(String(poi.id)))]);
+  const dayCount = Math.max(1, Number(trip.numberOfDays) || 1);
   candidatePool.sort((left, right) => (
     scorePoiForV2(right, trip, 10 * 60) - scorePoiForV2(left, trip, 10 * 60)
   ));
+  const poiClusters = clusterPOIsByDay(candidatePool, dayCount);
+  const selectedClusters = clusterPOIsByDay(forcedPois, dayCount)
+    .map((cluster) => sequenceDayPOIs(cluster, (
+      hotels[0]?.latitude != null && hotels[0]?.longitude != null
+        ? { lat: hotels[0].latitude, lng: hotels[0].longitude }
+        : trip.destinationLocation
+    )));
   const mealPool = uniqueCandidates([...forcedRestaurants, ...restaurants.filter((restaurant) => !selectedRestaurantIds.has(String(restaurant.id)))]);
 
   const baseHotel = hotels[0] || { id: 'hotel-default', name: 'Stay base', latitude: trip.destinationLocation?.lat ?? null, longitude: trip.destinationLocation?.lng ?? null };
-  const dayCount = Math.max(1, Number(trip.numberOfDays) || 1);
   const days = [];
   const usedPoiKeys = new Set();
   const usedMealKeys = new Set();
@@ -166,7 +178,7 @@ async function optimizeItineraryForTrip(trip, { pois = [], hotels = [], restaura
     const date = addDays(trip.startDate, dayIndex);
     const activities = [];
     const mealCandidates = mealPool;
-    let cursor = dayIndex === 0 ? FIRST_DAY_START_MINUTES : BREAKFAST_MINUTES;
+    let cursor = dayIndex === 0 ? FIRST_DAY_START_MINUTES : DAY_START_MINUTES;
 
     let previousCategory = null;
     const breakfast = dayIndex > 0
@@ -184,7 +196,16 @@ async function optimizeItineraryForTrip(trip, { pois = [], hotels = [], restaura
       cursor = BREAKFAST_MINUTES + 60;
     }
 
-    for (let i = 0; i < maxPoisPerDay; i += 1) {
+    const dayCandidates = uniqueCandidates([
+      ...selectedClusters[dayIndex],
+      ...poiClusters[dayIndex].filter((poi) => !selectedPoiIds.has(String(poi.id))),
+    ]).sort((left, right) => (
+      scorePoiForV2(right, trip, cursor) - scorePoiForV2(left, trip, cursor)
+    ));
+    const mandatoryForDay = selectedClusters[dayIndex];
+    const dayPoiLimit = Math.max(maxPoisPerDay, mandatoryForDay.length);
+
+    for (let i = 0; i < dayPoiLimit; i += 1) {
       if (cursor < LUNCH_MINUTES && cursor + 60 > LUNCH_MINUTES) cursor = LUNCH_MINUTES;
       if (cursor >= LUNCH_MINUTES && cursor < DINNER_MINUTES && !activities.some((activity) => activity.mealType === 'lunch')) {
         const lunchStart = Math.max(LUNCH_MINUTES, cursor);
@@ -203,7 +224,8 @@ async function optimizeItineraryForTrip(trip, { pois = [], hotels = [], restaura
         }
       }
 
-      const poi = candidatePool
+      const mandatoryPoi = mandatoryForDay.find((candidate) => !usedPoiKeys.has(candidateKey(candidate)));
+      const poi = mandatoryPoi || dayCandidates
         .filter((candidate) => !usedPoiKeys.has(candidateKey(candidate)))
         .find((candidate) => fitsOpeningWindow(candidate, date, cursor, durationFor(candidate)) && cursor + durationFor(candidate) <= DINNER_MINUTES);
       if (!poi) break;
@@ -220,6 +242,7 @@ async function optimizeItineraryForTrip(trip, { pois = [], hotels = [], restaura
         score: scored.score,
         breakdown: scored.breakdown,
         source: poi.source || 'overture',
+        isSelected: selectedPoiIds.has(String(poi.id)),
       }));
       previousCategory = poi.category || previousCategory;
       cursor += poiDuration + 20;

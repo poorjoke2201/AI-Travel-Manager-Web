@@ -1,12 +1,27 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { getGeocodeProviderOrder } = require('../../server/src/services/maps/geocoding.service');
+const {
+  getGeocodeProviderOrder,
+  cityFallbackCoords,
+  isValidCoordinates,
+  isWithinDestinationRadius,
+} = require('../../server/src/services/maps/geocoding.service');
 const { optimizeItineraryForTrip, scorePoiForV2Detailed } = require('../../server/src/services/engine/v2Optimizer.service');
 const { computeTransitionScore } = require('../../server/src/services/engine/transitionModel.service');
 
 test('geocode provider order prefers Geoapify before LocationIQ', () => {
   assert.deepEqual(getGeocodeProviderOrder(), ['geoapify', 'locationiq', 'cityFallback']);
+});
+
+test('coordinate validation rejects invalid or out-of-city results', () => {
+  const mysuru = cityFallbackCoords('Mysuru Sub District');
+
+  assert.deepEqual(mysuru, { lat: 12.2958, lng: 76.6394 });
+  assert.equal(isValidCoordinates({ lat: 12.3, lng: 76.6 }), true);
+  assert.equal(isValidCoordinates({ lat: 182, lng: 76.6 }), false);
+  assert.equal(isWithinDestinationRadius({ lat: 12.3, lng: 76.6 }, mysuru), true);
+  assert.equal(isWithinDestinationRadius({ lat: 28.6, lng: 77.2 }, mysuru), false);
 });
 
 test('transition model prefers realistic category progressions and no self loops', () => {
@@ -22,6 +37,23 @@ test('v2 optimizer exposes a breakdown with a valid score', () => {
   assert.ok(result.score <= 1);
   assert.ok(result.breakdown.preference >= 0);
   assert.ok(result.breakdown.timeFit >= 0);
+});
+
+test('v2 POI ranking favors global attraction quality over an exact preference match', () => {
+  const trip = { placePreferences: ['adventure'] };
+  const popularAttraction = {
+    category: 'Museums & Galleries',
+    popularityScore: 0.98,
+  };
+  const preferenceMatch = {
+    category: 'Adventure & Outdoor',
+    popularityScore: 0.3,
+  };
+
+  assert.ok(
+    scorePoiForV2Detailed(popularAttraction, trip, 10 * 60).score
+      > scorePoiForV2Detailed(preferenceMatch, trip, 10 * 60).score
+  );
 });
 
 test('v2 optimizer creates a valid multi-day itinerary with meal stops', async () => {

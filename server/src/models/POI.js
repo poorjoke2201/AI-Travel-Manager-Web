@@ -49,7 +49,17 @@ const poiSchema = new mongoose.Schema(
     website: { type: String, default: null },
     phone: { type: String, default: null },
     wikipedia: { type: String, default: null },
+    wikipediaUrl: { type: String, default: null },
     imageUrl: { type: String, default: null },
+    photos: {
+      type: [{
+        url: { type: String, required: true },
+        pageUrl: { type: String, default: null },
+        license: { type: String, default: null },
+        artist: { type: String, default: null },
+      }],
+      default: [],
+    },
     source: { type: String, default: 'dataset' }, // dataset | overture | gemini
     sourceRef: { type: String, default: null },
     lastUpdated: { type: Date, default: null },

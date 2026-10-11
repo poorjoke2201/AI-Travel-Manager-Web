@@ -1,12 +1,12 @@
 import api from './api';
 
-export async function register({ phoneNumber, username, avatar }) {
-  const { data } = await api.post('/auth/register', { phoneNumber, username, avatar });
+export async function register({ phoneNumber, username, password, avatar }) {
+  const { data } = await api.post('/auth/register', { phoneNumber, username, password, avatar });
   return data.data;
 }
 
-export async function login({ phoneNumber }) {
-  const { data } = await api.post('/auth/login', { phoneNumber });
+export async function login({ phoneNumber, password }) {
+  const { data } = await api.post('/auth/login', { phoneNumber, password });
   return data.data;
 }
 

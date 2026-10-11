@@ -1,6 +1,7 @@
 const tripService = require('../services/trip/trip.service');
 const { generateTrip } = require('../services/trip/tripGeneration.service');
 const { discoverTripOptions } = require('../services/trip/tripDiscovery.service');
+const { enrichItineraryImages } = require('../services/trip/itineraryImageEnrichment.service');
 
 async function discoverOptions(req, res, next) {
   try {
@@ -56,9 +57,56 @@ async function listTrips(req, res, next) {
   }
 }
 
+async function listPendingInvites(req, res, next) {
+  try {
+    const trips = await tripService.listPendingInvitesForUser(req.userId);
+    const invitations = trips.map(serializePendingInvite);
+    res.status(200).json({ success: true, data: invitations });
+  } catch (err) {
+    next(err);
+  }
+}
+
+function serializePendingInvite(trip) {
+  return {
+    _id: trip._id,
+    tripName: trip.tripName,
+    origin: trip.origin,
+    destination: trip.destination,
+    startDate: trip.startDate,
+    endDate: trip.endDate,
+    createdAt: trip.createdAt,
+  };
+}
+
 async function getTrip(req, res, next) {
   try {
     const trip = await tripService.getTripById(req.params.id, req.userId);
+    res.status(200).json({ success: true, data: trip });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getTripCoverImage(req, res, next) {
+  try {
+    const imageUrl = await tripService.ensureTripCoverImage(req.params.id, req.userId);
+    res.status(200).json({ success: true, data: { coverImageUrl: imageUrl } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function enrichTripImages(req, res, next) {
+  try {
+    const trip = await tripService.getTripById(req.params.id, req.userId);
+    if (trip.itineraryContentVersion < 2) {
+      await enrichItineraryImages(trip.itinerary, trip.destination);
+      trip.itineraryImagesEnrichedAt = new Date();
+      trip.itineraryContentEnrichedAt = new Date();
+      trip.itineraryContentVersion = 4;
+      await trip.save();
+    }
     res.status(200).json({ success: true, data: trip });
   } catch (err) {
     next(err);
@@ -113,7 +161,11 @@ module.exports = {
   createAndGenerateTrip,
   regenerateTrip,
   listTrips,
+  listPendingInvites,
+  serializePendingInvite,
   getTrip,
+  getTripCoverImage,
+  enrichTripImages,
   updateTrip,
   deleteTrip,
   replaceItineraryActivity,

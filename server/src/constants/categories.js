@@ -5,18 +5,9 @@
  * backend actually accepts.
  */
 
-const PLACE_INTERESTS = [
-  'Historical', 'Heritage', 'Nature', 'Adventure', 'Beaches', 'Mountains',
-  'Wildlife', 'Religious', 'Cultural', 'Museums', 'Shopping', 'Nightlife',
-  'Photography', 'Architecture', 'Local experiences', 'Entertainment',
-  'Family-friendly', 'Romantic',
-];
-
-const FOOD_PREFERENCES = [
-  'Vegetarian', 'Non-vegetarian', 'Vegan', 'Jain', 'Local cuisine',
-  'North Indian', 'South Indian', 'Chinese', 'Continental', 'Street food',
-  'Fine dining', 'Budget food', 'No preference',
-];
+const options = require('../../../shared/travelPreferences.json');
+const PLACE_INTERESTS = options.placeInterests;
+const FOOD_PREFERENCES = options.foodPreferences;
 
 // POI categories as they actually appear in master_pois.csv `category` column.
 // Used for fuzzy matching against placePreferences, not as a hard enum.

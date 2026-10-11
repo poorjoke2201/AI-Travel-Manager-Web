@@ -8,6 +8,7 @@ const phoneNumberSchema = z
 const registerSchema = z.object({
   phoneNumber: phoneNumberSchema,
   username: z.string().trim().min(3, 'Username must be at least 3 characters').max(30),
+  password: z.string().trim().min(8, 'Password must be at least 8 characters').max(72).optional(),
   avatar: z.string().trim().optional().nullable(),
 });
 
@@ -22,6 +23,7 @@ const verifyOtpSchema = z.object({
   pendingProfile: z
     .object({
       username: z.string().trim().min(3).max(30),
+      password: z.string().trim().min(8).max(72).optional(),
       avatar: z.string().trim().optional().nullable(),
     })
     .optional(),
@@ -29,6 +31,7 @@ const verifyOtpSchema = z.object({
 
 const loginSchema = z.object({
   phoneNumber: phoneNumberSchema,
+  password: z.string().trim().min(8).max(72).optional(),
 });
 
 module.exports = { registerSchema, sendOtpSchema, verifyOtpSchema, loginSchema };

@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { budgetScore, candidateDataQualityScore, candidateQualityScore, preferenceMatchScore, proximityScore, weightedScore } = require('../../server/src/services/recommendation/scoring.service');
+const { scorePoi } = require('../../server/src/services/recommendation/poiRecommendation.service');
 
 test('recommendation scoring keeps values in the expected range', () => {
 	assert.equal(preferenceMatchScore(['beach', 'museum'], ['Beach', 'nature']), 0.5);
@@ -17,6 +18,10 @@ test('candidate quality prefers verified popularity signals without penalizing u
 	assert.ok(unknown > 0);
 });
 
+test('candidate quality uses dataset tier as a city-independent quality signal', () => {
+	assert.ok(candidateQualityScore({ tier: 'A' }) > candidateQualityScore({ tier: 'C' }));
+});
+
 test('candidate data quality rewards usable itinerary metadata', () => {
 	const complete = candidateDataQualityScore({
 		latitude: 12.3,
@@ -30,4 +35,24 @@ test('candidate data quality rewards usable itinerary metadata', () => {
 
 	assert.equal(complete, 1);
 	assert.ok(candidateDataQualityScore({}) < complete);
+});
+
+test('POI ranking keeps destination-wide high-quality attractions ahead of preference-only matches', () => {
+	const trip = { placePreferences: ['adventure'], dailyTravelToleranceKm: 30 };
+	const popularAttraction = {
+		name: 'Central History Museum',
+		category: 'Museums & Galleries',
+		popularityScore: 0.98,
+		latitude: 12.3,
+		longitude: 76.6,
+	};
+	const preferenceMatch = {
+		name: 'Small Adventure Activity',
+		category: 'Adventure & Outdoor',
+		popularityScore: 0.3,
+		latitude: 12.3,
+		longitude: 76.6,
+	};
+
+	assert.ok(scorePoi(popularAttraction, trip, { lat: 12.3, lng: 76.6 }) > scorePoi(preferenceMatch, trip, { lat: 12.3, lng: 76.6 }));
 });

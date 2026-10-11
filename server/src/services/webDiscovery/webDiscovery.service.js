@@ -29,7 +29,11 @@ async function persistHotelCandidate({ city, name, pricePerNightInr, googleRatin
 
   if (existing) return existing;
 
-  const coords = await geocodeAddress(`${safeName}, ${safeCity}, India`) || cityFallbackCoords(safeCity);
+  const coords = await geocodeAddress(`${safeName}, ${safeCity}, India`, {
+    destinationCity: safeCity,
+    biasCoords: cityFallbackCoords(safeCity),
+    allowCityFallback: false,
+  });
   const hotel = await Hotel.create({
     sourceId: Math.abs(Number(`${Date.now()}${Math.random().toString().slice(2, 8)}`)),
     name: safeName,
@@ -57,7 +61,11 @@ async function persistPoiCandidate({ city, name, category = 'Points of Interest'
 
   if (existing) return existing;
 
-  const coords = await geocodeAddress(`${safeName}, ${safeCity}, India`) || cityFallbackCoords(safeCity);
+  const coords = await geocodeAddress(`${safeName}, ${safeCity}, India`, {
+    destinationCity: safeCity,
+    biasCoords: cityFallbackCoords(safeCity),
+    allowCityFallback: false,
+  });
   const poi = await POI.create({
     sourceId: Math.abs(Number(`${Date.now()}${Math.random().toString().slice(2, 8)}`)),
     name: safeName,
@@ -87,7 +95,11 @@ async function persistRestaurantCandidate({ city, name, cuisine = ['local'], des
 
   if (existing) return existing;
 
-  const coords = await geocodeAddress(`${safeName}, ${safeCity}, India`) || cityFallbackCoords(safeCity);
+  const coords = await geocodeAddress(`${safeName}, ${safeCity}, India`, {
+    destinationCity: safeCity,
+    biasCoords: cityFallbackCoords(safeCity),
+    allowCityFallback: false,
+  });
   const restaurant = await Restaurant.create({
     sourceId: Math.abs(Number(`${Date.now()}${Math.random().toString().slice(2, 8)}`)),
     name: safeName,
