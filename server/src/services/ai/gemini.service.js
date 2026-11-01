@@ -58,7 +58,10 @@ async function generateJson(prompt) {
  * @param {(json: any) => {valid: boolean, errors: string[], data: any}} validatorFn
  * @returns {Promise<{ok: boolean, data: any|null, errors: string[], provider: string}>}
  */
-async function generateValidatedJson(prompt, validatorFn, { maxRetries = 1 } = {}) {
+async function generateValidatedJson(prompt, validatorFn, {
+  maxRetries = 1,
+  generateJsonFn = generateJson,
+} = {}) {
   let lastErrors = [];
   let currentPrompt = prompt;
 
@@ -67,10 +70,12 @@ async function generateValidatedJson(prompt, validatorFn, { maxRetries = 1 } = {
     let raw;
     try {
       // eslint-disable-next-line no-await-in-loop
-      raw = await generateJson(currentPrompt);
+      raw = await generateJsonFn(currentPrompt);
     } catch (err) {
       lastErrors = [err.message];
-      break;
+      if (attempt === maxRetries) break;
+      currentPrompt = `${prompt}\n\nYour previous response could not be processed. Please correct this and return valid JSON only.`;
+      continue;
     }
 
     const result = validatorFn(raw);

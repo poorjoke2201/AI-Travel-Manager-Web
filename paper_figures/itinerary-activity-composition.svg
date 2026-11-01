@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="590" viewBox="0 0 960 590" role="img" aria-labelledby="title description">
+  <title id="title">Activity composition of persisted generated itineraries</title>
+  <desc id="description">Mean activity records per itinerary day, grouped by activity type, calculated from 11 generated trips and 53 itinerary days.</desc>
+  <style>
+    text { font-family: Arial, Helvetica, sans-serif; fill: #253238; }
+    .title { font-size: 23px; font-weight: 700; }
+    .subtitle { font-size: 13px; fill: #5e6a6d; }
+    .tick { font-size: 12px; fill: #657176; }
+    .axis-label { font-size: 13px; font-weight: 600; }
+    .label { font-size: 12px; font-weight: 600; }
+    .sub-label { font-size: 11px; fill: #697579; }
+    .value { font-size: 13px; font-weight: 700; }
+    .note { font-size: 11px; fill: #657176; }
+  </style>
+  <rect width="100%" height="100%" fill="#fffdf8"/>
+  <text x="94" y="40" class="title">Activity composition of persisted generated itineraries</text>
+  <text x="94" y="66" class="subtitle">Mean activity records per itinerary day · 11 trips · 53 days</text>
+  <text x="94" y="88" class="subtitle">Database snapshot: 2026-10-14</text>
+  
+      <line x1="94" y1="448" x2="926" y2="448" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="453" text-anchor="end" class="tick">0.00</text>
+    
+      <line x1="94" y1="410.6666666666667" x2="926" y2="410.6666666666667" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="415.6666666666667" text-anchor="end" class="tick">0.50</text>
+    
+      <line x1="94" y1="373.33333333333337" x2="926" y2="373.33333333333337" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="378.33333333333337" text-anchor="end" class="tick">1.00</text>
+    
+      <line x1="94" y1="336" x2="926" y2="336" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="341" text-anchor="end" class="tick">1.50</text>
+    
+      <line x1="94" y1="298.6666666666667" x2="926" y2="298.6666666666667" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="303.6666666666667" text-anchor="end" class="tick">2.00</text>
+    
+      <line x1="94" y1="261.3333333333333" x2="926" y2="261.3333333333333" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="266.3333333333333" text-anchor="end" class="tick">2.50</text>
+    
+      <line x1="94" y1="224" x2="926" y2="224" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="229" text-anchor="end" class="tick">3.00</text>
+    
+      <line x1="94" y1="186.66666666666669" x2="926" y2="186.66666666666669" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="191.66666666666669" text-anchor="end" class="tick">3.50</text>
+    
+      <line x1="94" y1="149.33333333333337" x2="926" y2="149.33333333333337" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="154.33333333333337" text-anchor="end" class="tick">4.00</text>
+    
+      <line x1="94" y1="112" x2="926" y2="112" stroke="#dedbd5" stroke-width="1"/>
+      <text x="80" y="117" text-anchor="end" class="tick">4.50</text>
+    
+  <line x1="94" y1="112" x2="94" y2="448" stroke="#667276" stroke-width="1.4"/>
+  <line x1="94" y1="448" x2="926" y2="448" stroke="#667276" stroke-width="1.4"/>
+  <text transform="translate(26 280) rotate(-90)" text-anchor="middle" class="axis-label">Mean activities per itinerary day</text>
+  
+      <rect x="123.12" y="243.72327044025155" width="80.42666666666666" height="204.27672955974845" rx="7" fill="#126a70"/>
+      <text x="163.33333333333334" y="232.72327044025155" text-anchor="middle" class="value">2.74</text>
+      <text x="163.33333333333334" y="498" text-anchor="middle" class="label">Points of interest</text>
+      <text x="163.33333333333334" y="522" text-anchor="middle" class="sub-label">145 total</text>
+    
+      <rect x="261.78666666666663" y="342.33962264150944" width="80.42666666666666" height="105.66037735849056" rx="7" fill="#d28f62"/>
+      <text x="301.99999999999994" y="331.33962264150944" text-anchor="middle" class="value">1.42</text>
+      <text x="301.99999999999994" y="498" text-anchor="middle" class="label">Restaurants</text>
+      <text x="301.99999999999994" y="522" text-anchor="middle" class="sub-label">75 total</text>
+    
+      <rect x="400.4533333333333" y="135.2452830188679" width="80.42666666666666" height="312.7547169811321" rx="7" fill="#566a88"/>
+      <text x="440.66666666666663" y="124.2452830188679" text-anchor="middle" class="value">4.19</text>
+      <text x="440.66666666666663" y="498" text-anchor="middle" class="label">Travel legs</text>
+      <text x="440.66666666666663" y="522" text-anchor="middle" class="sub-label">222 total</text>
+    
+      <rect x="539.12" y="448" width="80.42666666666666" height="0" rx="7" fill="#99aa72"/>
+      <text x="579.3333333333334" y="437" text-anchor="middle" class="value">0.00</text>
+      <text x="579.3333333333334" y="498" text-anchor="middle" class="label">Breaks</text>
+      <text x="579.3333333333334" y="522" text-anchor="middle" class="sub-label">0 total</text>
+    
+      <rect x="677.7866666666666" y="448" width="80.42666666666666" height="0" rx="7" fill="#a985a3"/>
+      <text x="718" y="437" text-anchor="middle" class="value">0.00</text>
+      <text x="718" y="498" text-anchor="middle" class="label">Hotels</text>
+      <text x="718" y="522" text-anchor="middle" class="sub-label">0 total</text>
+    
+      <rect x="816.4533333333333" y="448" width="80.42666666666666" height="0" rx="7" fill="#8b8b8b"/>
+      <text x="856.6666666666666" y="437" text-anchor="middle" class="value">0.00</text>
+      <text x="856.6666666666666" y="498" text-anchor="middle" class="label">Other activity types</text>
+      <text x="856.6666666666666" y="522" text-anchor="middle" class="sub-label">0 total</text>
+    
+  <text x="94" y="563" class="note">Descriptive composition only; counts do not measure recommendation relevance, schedule feasibility, or route quality.</text>
+</svg>

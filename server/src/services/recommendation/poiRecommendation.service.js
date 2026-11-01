@@ -30,7 +30,7 @@ function scorePoi(poi, trip, referencePoint) {
 }
 
 /** Asks Gemini for a handful of additional POI suggestions when the dataset is thin for this city. */
-async function fetchGeminiFallbackPOIs(trip, existingNames) {
+async function fetchGeminiFallbackPOIs(trip, existingNames, generateJsonFn = generateJson) {
   const prompt = `
 Suggest up to 8 real, well-known points of interest in ${trip.destination}, India that would suit a
 traveller interested in: ${trip.placePreferences.join(', ') || 'general sightseeing'}.
@@ -40,7 +40,7 @@ Return STRICT JSON only, no markdown, in exactly this shape:
 `.trim();
 
   try {
-    const json = await generateJson(prompt);
+    const json = await generateJsonFn(prompt);
     const list = Array.isArray(json.pois) ? json.pois : [];
     return list.slice(0, 8).map((p, idx) => ({
       id: `gemini-poi-${idx}`,
@@ -65,8 +65,11 @@ Return STRICT JSON only, no markdown, in exactly this shape:
  * latitude, longitude, source }]. Mixes in Gemini-suggested extras (clearly
  * tagged source:'gemini') only when the dataset is too thin (spec section 22).
  */
-async function recommendPOIs(trip, destinationCoords, accommodationPoint = null) {
-  const rawCandidates = await getCandidatePOIs(trip);
+async function recommendPOIs(trip, destinationCoords, accommodationPoint = null, {
+  candidateProvider = getCandidatePOIs,
+  generateJsonFn = generateJson,
+} = {}) {
+  const rawCandidates = await candidateProvider(trip);
   const referencePoint = accommodationPoint || destinationCoords;
   const { targetPOIs } = poiCoverageTarget(trip);
 
@@ -122,7 +125,8 @@ async function recommendPOIs(trip, destinationCoords, accommodationPoint = null)
   if (finalList.length < MIN_ACCEPTABLE_CANDIDATES) {
     const extras = await fetchGeminiFallbackPOIs(
       trip,
-      finalList.map((p) => p.name)
+      finalList.map((p) => p.name),
+      generateJsonFn
     );
     finalList = [...finalList, ...extras];
   }
@@ -130,7 +134,7 @@ async function recommendPOIs(trip, destinationCoords, accommodationPoint = null)
   return finalList;
 }
 
-module.exports = { recommendPOIs, scorePoi };
+module.exports = { recommendPOIs, scorePoi, fetchGeminiFallbackPOIs };
 
 function dedupePOIs(candidates) {
   const seen = new Set();

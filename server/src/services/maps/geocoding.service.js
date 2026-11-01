@@ -176,6 +176,8 @@ async function geocodeAddress(query, {
   destinationCity = null,
   biasCoords = null,
   allowCityFallback = true,
+  geoapifyGeocodeFn = geoapifyGeocode,
+  locationIqGeocodeFn = locationIqGeocode,
 } = {}) {
   if (!query || !query.trim()) return null;
 
@@ -190,10 +192,10 @@ async function geocodeAddress(query, {
       ? cityFallbackCoords(destinationCity)
       : cityFallbackCoords(extractCityFromQuery(effectiveQuery)));
 
-  const geoapifyResult = await geoapifyGeocode(effectiveQuery, effectiveBias);
+  const geoapifyResult = await geoapifyGeocodeFn(effectiveQuery, effectiveBias);
   if (geoapifyResult && isWithinDestinationRadius(geoapifyResult, effectiveBias)) return geoapifyResult;
 
-  const locationIqResult = await locationIqGeocode(effectiveQuery, effectiveBias);
+  const locationIqResult = await locationIqGeocodeFn(effectiveQuery, effectiveBias);
   if (locationIqResult && isWithinDestinationRadius(locationIqResult, effectiveBias)) return locationIqResult;
 
   if (!allowCityFallback) return null;

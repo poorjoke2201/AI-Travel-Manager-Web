@@ -1,0 +1,415 @@
+TRAVEL MANAGER: A FALLBACK-AWARE HYBRID SYSTEM FOR AI-ASSISTED TRAVEL PLANNING
+
+Author names and affiliations: Insert the final author order and institutional details from the submitted manuscript.
+
+
+ABSTRACT
+
+Travel planning requires travelers to select attractions, accommodation, food, and transportation while coordinating these choices with dates, budget, geographic distance, and personal preferences. This paper presents Travel Manager, a full-stack travel-management application that combines structured point-of-interest (POI) data, multi-criteria candidate ranking, large-language-model generation, and geographic processing. The application retrieves destination-specific POIs, hotels, and restaurants from MongoDB, ranks candidates, and supplies selected candidates and trip constraints to Google Gemini for structured trip content and itinerary generation. Generated itinerary data is validated against structural and trip-specific rules before it is accepted. A deterministic itinerary builder provides an alternative when the AI-generated itinerary is not valid or cannot be produced. Geographic services are used for geocoding and road routing, while local coordinate lookup, local stop sequencing, or Haversine-based estimates are used for selected failure cases.
+
+The system also includes a POI data preparation pipeline that draws on Overture Maps and enriches records with OpenStreetMap and Wikidata information; live candidate backfill can use Geoapify Places and OpenStreetMap's Overpass service. The web application provides interactive two-dimensional maps, a Cesium-based three-dimensional POI view, trip budgets and recorded expenses, receipt-backed budget reports, group trip functions, and a private travel journal. The paper describes the architecture, ranking and scheduling methods, and fallback behavior implemented in the system. It does not claim that the system consistently identifies every destination's most important attractions, finds globally optimal routes, or preserves primary-service accuracy under failure. The codebase establishes implementation behavior, but no controlled user study or quantitative benchmark of recommendation relevance, route quality, or end-to-end fallback effectiveness is reported here. Such evaluation is required to establish effectiveness or comparative novelty.
+
+
+KEYWORDS
+
+Travel planning; point-of-interest recommendation; itinerary generation; large language models; geospatial planning; fallback handling; travel-management system.
+
+
+1. INTRODUCTION
+
+Planning a trip involves related decisions about places to visit, accommodation, meals, transportation, dates, and expenditure. These decisions are not independent. A collection of highly rated attractions may be unsuitable if the sites are too far apart, closed on the planned day, or impossible to fit into the available time. Likewise, a schedule that ignores a traveler's stated interests, pace, or budget may be technically complete but practically unsuitable. Travel planning therefore involves both candidate recommendation and the organization of selected candidates into a schedule under geographic and temporal constraints.
+
+Recommendation systems commonly use item attributes and user preferences to estimate relevance [1]. Travel itineraries add spatial and temporal constraints: recommendations must be arranged into days and ordered in a way that takes location, visit duration, and travel time into account. A conventional itinerary optimizer can handle explicit constraints but may not provide natural-language summaries or contextual suggestions. Conversely, a language model can produce readable plans but may return invalid schedules or reference places that are unsupported by the application's data. This project addresses these implementation challenges by combining structured candidate retrieval and ranking with AI generation, validation, geographic processing, and deterministic alternatives.
+
+Travel Manager is a React and Vite client with an Express.js and Mongoose server backed by MongoDB. During trip creation, the user supplies details such as origin, destination, travel dates, budget, traveler preferences, and pace. The server retrieves candidate POIs, hotels, and restaurants; ranks or filters those candidates; requests structured content from Gemini; validates generated data; and stores the trip, its itinerary, and related planning information. The application exposes the resulting plan through trip pages, maps, and budget-management tools.
+
+The system is designed as a hybrid pipeline rather than a single prompt-to-itinerary operation. For POIs, scorePoi() combines preference match, candidate quality, proximity, and data completeness. The function generateValidatedJson() retries a failed validation response according to its retry configuration. The itinerary generation path can use buildDeterministicItinerary() when Gemini output fails validation or cannot be produced. Geoapify road routes may be used for travel information; if a route is unavailable, some local route calculations can fall back to Haversine distance and an estimated duration. These mechanisms offer continuity for selected functions, but their outputs are not equivalent in precision or coverage to live provider data.
+
+The contribution of this paper is a code-grounded description of an integrated travel-planning application and its fallback-aware design. The paper does not assert that the system is the first of its kind or that its recommendations are superior to existing approaches. Such claims would require a broader literature comparison and empirical evaluation.
+
+1.1 PROBLEM DEFINITION
+
+Given a destination, dates, an origin, a budget, and user preferences, the system must retrieve travel candidates from its available data, generate an itinerary containing activities for the trip period, and provide geographic and budget context. The planning process must handle incomplete candidate metadata and failures or unavailable results from external AI, geocoding, weather, routing, and enrichment services. The target is an operational travel plan with traceable candidate records and explicit estimates, not a proof of globally optimal route or guaranteed real-world availability.
+
+1.2 OBJECTIVES
+
+The objectives of the project are:
+
+1. To integrate structured travel records and user preferences into a trip-planning workflow.
+2. To rank POI candidates using explicit preference, quality, proximity, and data-completeness signals.
+3. To use an AI model for structured trip and itinerary content while validating generated itinerary data before persistence.
+4. To provide deterministic or lower-dependency alternatives for selected generation and routing failures.
+5. To support subsequent trip management through maps, budgets, recorded expenses, group features, and travel-journal functionality.
+6. To identify measurable evaluation procedures for recommendation relevance, itinerary feasibility, and fallback behavior.
+
+1.3 RESEARCH QUESTIONS
+
+RQ1. How are travel candidates retrieved and ranked from structured destination data and user preferences?
+
+RQ2. How does the system combine AI-generated content with validation, scheduling, and geographic processing?
+
+RQ3. Which system functions remain available when selected AI or geographic providers do not return usable results, and what information or precision is lost?
+
+These questions define the paper's investigation. The implementation alone does not answer them quantitatively.
+
+1.4 PAPER ORGANIZATION
+
+Section 2 reviews recommendation, itinerary-design, and geospatial concepts relevant to the project. Section 3 describes system architecture and trip generation. Section 4 covers travel-data sources and preparation. Section 5 describes ranking, itinerary generation, and geographic scheduling. Section 6 documents fallbacks. Section 7 outlines implementation features. Sections 8 and 9 present the evaluation approach and the results that can be supported at this stage. Sections 10 and 11 discuss novelty, limitations, and future work, followed by the conclusion and references.
+
+
+2. RELATED WORK
+
+2.1 RECOMMENDATION SYSTEMS
+
+Recommendation systems rank items according to estimated usefulness or relevance to a user. Content-based recommendation uses item attributes and user preferences, while other methods may use collaborative behavior, context, or hybrid combinations [1]. Travel recommendations have additional contextual attributes, including destination, geographic distance, visit duration, opening hours, rating, and cost. Travel Manager's POI recommender is content- and metadata-based: trip preferences are matched against POI text and categories, and candidate quality and geographic proximity contribute to the ranking. It does not implement collaborative filtering based on user-item ratings or a learned preference model.
+
+2.2 TOUR ITINERARY DESIGN AND ROUTING
+
+Tour itinerary design is related to routing and orienteering problems in which a set of candidate locations must be selected or ordered under constraints such as travel time and available duration. The travelling-salesperson problem is a classical formulation of route ordering [2]. Travel Manager does not claim to solve this problem optimally. Its deterministic path uses geographical clustering and a greedy nearest-neighbour sequence, while the AI path creates a structured schedule that is subsequently processed by application logic. Geoapify route-planning and routing endpoints may provide provider-based ordering, road distance, duration, and geometry. When these are unavailable, a simpler local ordering or straight-line estimate may be used.
+
+2.3 LANGUAGE MODELS IN STRUCTURED APPLICATIONS
+
+Large language models can produce natural-language and structured responses, but an application must validate output before treating it as data. Travel Manager requests JSON-formatted output from Gemini and validates relevant response objects with Zod schemas and business rules. For itineraries, validation checks properties such as day count, sequence, dates, schedule fields, and references to supplied candidates. The application then maps accepted output to its own Trip and itinerary schema. Gemini is therefore one component of the pipeline, not the authoritative data store or an unrestricted source of candidate identifiers.
+
+2.4 POSITIONING OF THIS WORK
+
+The project brings together practices often treated as separate concerns: database-backed travel candidate retrieval, weighted POI ranking, AI-assisted itinerary generation, geographic route processing, and selected deterministic fallbacks. This integration is a candidate applied-system contribution. It is not, by itself, evidence of research novelty. A claim of novelty must be assessed against a broader and current review of travel recommender systems and LLM-based planning systems, and should be supported by comparative experiments.
+
+
+3. SYSTEM ARCHITECTURE AND TRIP GENERATION
+
+3.1 ARCHITECTURAL COMPONENTS
+
+The client is implemented with React and Vite. React Router organizes application pages, Axios communicates with the server, Leaflet and OpenStreetMap tiles support two-dimensional mapping [4, 11], and CesiumJS provides a separate 3D POI view [12]. The client exposes workflows for authentication, dashboard and trip management, trip creation, itinerary viewing, Explore, public trips, profile, travel journal, and budget management.
+
+The server is implemented with Node.js and Express. Mongoose models represent users, trips, POIs, hotels, restaurants, expenses, and supporting records. Zod validates selected request bodies and parameters. Authentication uses JWTs; the application supports OTP authentication and password authentication, with password hashes managed using bcryptjs. The OTP service in the repository is a development implementation: it uses the fixed code 123456 and in-memory state, logs the code, and is not an SMS delivery provider.
+
+MongoDB stores planning records and application state. The Trip model stores user ownership, trip name, origin and destination, dates, budget, preferences, selected candidates, generation status, transport recommendations, pre-trip information, budget summary, and itinerary activities. An itinerary activity may store its type, name, time, duration, location, source, reference ID, opening-hour fields, description, and image metadata. Records retain source distinctions such as dataset, Gemini, Geoapify, Overture, Overpass, and web discovery where applicable.
+
+External services include Google Gemini for generated structured content [6]; Geoapify for geocoding, Places, route planning, routing, and selected place details [7]; LocationIQ for a secondary geocoding attempt; Open-Meteo for supported forecast or historical weather queries [8]; Wikipedia/Wikimedia and Wikidata for place descriptions and images [5, 13]; and Overpass for open map candidate discovery [4]. Service availability and API configuration can vary by deployment.
+
+3.2 TRIP-GENERATION WORKFLOW
+
+The main generation flow is implemented in generateTrip() in server/src/services/trip/tripGeneration.service.js. At a high level, the server:
+
+1. Loads a trip and verifies that its owner is the requesting user; it marks the trip as generating.
+2. Geocodes the destination, using Geoapify and LocationIQ through the geocoding service, with a static city-coordinate fallback for supported city names.
+3. Retrieves POIs, hotels, and restaurants from existing candidate snapshots or from recommendation services.
+4. Requests additional POIs or restaurants through the candidate backfill service if coverage is below the computed target. This path can query Geoapify Places and, when still short, Overpass.
+5. Filters candidates against destination boundaries and selected availability information, then ensures user-selected candidates are represented where available.
+6. Requests weather data where the trip dates and provider window permit it.
+7. Generates pre-trip guidance and transport recommendations, using validated Gemini output or defined fallbacks.
+8. Generates an itinerary using the configured itinerary mode. The default mode is legacy Gemini generation unless environment configuration selects another mode. The optional v2 optimizer can be used or run in shadow mode.
+9. Validates and maps the itinerary, processes missing activity coordinates, applies route and schedule enrichment, and adds image enrichment where a reliable match can be resolved.
+10. Saves the generated trip. A failure in the core pipeline marks the trip failed and records an error so that it can be retried.
+
+The Trip.status field distinguishes draft, generating, generated, and failed states. A failed trip is not silently represented as a successful generated itinerary.
+
+3.3 SERVER-CLIENT RESPONSIBILITIES
+
+The server performs candidate retrieval, authentication and authorization, model calls, validation, persistence, geocoding, and route enrichment. The client presents the available trip records and supports user actions such as selecting candidates, editing trip information, reviewing itineraries, visualizing locations, and entering expenses. Provider credentials are configured on the server or through environment-specific configuration rather than being embedded as ordinary client data. Browser-facing credentials such as a Cesium ion token are necessarily used by that client feature and must be configured with appropriate provider-side restrictions before deployment.
+
+
+4. DATA SOURCES, DATASET CONSTRUCTION, AND PREPARATION
+
+4.1 MULTI-SOURCE CONSTRUCTION OF THE OVERTURE POI DATASET
+
+The principal multi-source dataset construction process is implemented as a resumable pipeline in scripts/build_poi_dataset.py. It creates a structured POI CSV from an Overture Maps base extract and enriches the resulting records with attributes matched from an India OpenStreetMap PBF extract and linked Wikidata entities. The three sources do not contribute equivalent records: Overture supplies the base POI entities and coordinates; OpenStreetMap supplies matching tags and descriptive attributes; and Wikidata supplies structured entity properties and a sitelink-count proxy for popularity.
+
+In the first stage, scripts/build_overture_pois.py queries the Overture Places release configured in OVERTURE_RELEASE, using a geographic bounding box covering India and a selected set of place categories. The query retains records with confidence at or above 0.7, then applies a country-code filter and excludes unnamed records. The selected categories include heritage and historical locations, museums, religious sites, parks and nature locations, tourist attractions, zoos, markets, recreation, and related place types. The query uses DuckDB to read the Overture Parquet data from S3 and writes data/pois_overture.csv. The configured release and query filters should be reported with the exact version used for the paper's dataset snapshot.
+
+The Overture records are normalized into the project's POI column schema and deduplicated before enrichment. Names are normalized by lowercasing, stripping accents, and collapsing whitespace. Same-name records are considered duplicates within 300 metres for ordinary categories and within 1.5 kilometres for configured large-area categories such as parks, lakes, beaches, and nature reserves. The row with the higher source_count is retained where applicable and the paired coordinates are averaged. A second pass removes named sub-features such as entrances, gates, parking areas, ticket counters, or exits when a likely parent record is nearby within 500 metres. These are rule-based matching procedures; they reduce repeated records but cannot guarantee perfect entity resolution.
+
+Each retained Overture record receives a tier. The tier-assignment function checks for a Wikipedia/Wikidata identifier, a website, or at least three contributing Overture sources for Tier A; Tier B is assigned for at least two sources or confidence of at least 0.85; remaining records are Tier C. However, the current Overture query selects website, source_count, and confidence but does not select Wikipedia/Wikidata identifier columns. Therefore, in the current query path, the identifier branch is not populated from the Overture query, and Tier A assignment effectively depends on website or source_count. This distinction should be preserved when describing the implemented dataset. The script also maps Overture categories to the application's category names and derives selected fields. Category priors provide defaults for visit duration, indoor/outdoor classification, suggested time of day, and some fee and opening-time fields. A static list of Indian airports is used to derive a has_airport_nearby flag based on a 50-kilometre Haversine threshold. These derived values are heuristics or category defaults, not verified venue-specific facts.
+
+In the second stage, scripts/enrich_overture_osm.py reads an India PBF extract obtained from Geofabrik or supplied using the --pbf option. It indexes selected OSM nodes and ways with relevant tourism, historic, amenity, and leisure tags; relations are not indexed by this implementation. For each Overture POI with coordinates, the script searches for OSM features within 150 metres and selects the best name match if its Jaccard token-overlap score is at least 0.6. A matched feature can contribute opening-hours data, fee, establishment year, website, Wikidata and Wikipedia identifiers, description, and significance. The script writes only rows for which at least one useful enrichment field was found. This is attribute enrichment of Overture records rather than an independent concatenation of every OSM feature into the POI dataset.
+
+In the third stage, scripts/enrich_overture_wikidata.py collects Wikidata QIDs available from the OSM enrichment output and, when present, the Overture file. It queries eligible Tier A and Tier B POIs in batches of 50 QIDs. The fields retrieved include inception year, heritage designation, English description, and the number of Wikipedia language sitelinks. The sitelink count is used later as a popularity proxy; it is not a direct measurement of visits, ratings, or cultural importance. The pipeline writes these values to data/wikidata_enrichment.csv.
+
+During import of Overture POIs, scripts/importDatasets.js joins the OSM and Wikidata enrichment rows to the Overture base rows by the Overture source_id. It maps the merged fields to the POI model, retains the source reference and Overture provenance, and stores selected enrichment provenance metadata. The final MongoDB POI collection can also contain records from data/master_pois.csv, which are imported as a separate dataset. Consequently, the process should be described precisely as (a) field-level OSM/Wikidata enrichment of Overture POIs and (b) coexistence of separately imported master and Overture records in the same MongoDB collection; it is not a single deduplicated union across every provider's POI records.
+
+4.2 OTHER TRAVEL DATASETS
+
+The project also imports data/master_hotels.csv and data/master_restaurants.csv as separate datasets. These are mapped to their own MongoDB collections and schemas; the Overture/OSM/Wikidata pipeline described above is specifically the POI pipeline and does not merge hotel or restaurant rows into the POI dataset. The importer reads the CSV headers and maps fields that are present, normalizes values, and does not invent absent columns. The Hotel schema notes that the master hotel dataset has no latitude/longitude, so coordinates may be populated later through runtime geocoding. Restaurant coordinates are imported when present in the source CSV.
+
+4.3 NORMALIZATION AND STORAGE
+
+The importer maps both the master POI CSV and Overture-derived rows into the POI model, which includes name, city, state, coordinates, category, type, significance, tags, entry fee, estimated visit duration, rating, review count, opening times, weekly closure, description, website, phone, Wikipedia information, image information, tier, confidence, source count, and Wikidata identifier. Where coordinates are available, a GeoJSON Point is stored in [longitude, latitude] order, following the GeoJSON coordinate convention [10], and a 2dsphere index supports geospatial queries. The importer streams CSV input, processes batches, and upserts records by sourceId. For Overture rows, it derives the numeric sourceId from a hash of the Overture source_id while retaining the original reference in sourceRef. This import strategy supports repeatable updates for the same identifiers, but does not in itself perform a cross-source spatial deduplication of all documents already present in MongoDB.
+
+The database model accepts missing values for many attributes. Category priors should therefore remain distinguishable from source-reported facts, and the stored enrichment metadata records provenance for selected fields such as opening hours, fees, significance, and descriptions.
+
+No total record count is reported in this paper because it must be measured from the exact built dataset and database snapshot used in an experiment. Dataset coverage can vary by city and category.
+
+4.4 RUNTIME DATA ACQUISITION AND IMAGE ENRICHMENT
+
+The offline OSM and Wikidata matching procedures used to construct the enriched Overture files are described in Section 4.1. Separately, when the existing POI or restaurant candidate lists are short, backfillCandidates() can query Geoapify Places and then Overpass for additional candidates around the geocoded destination. Returned records are normalized and persisted in MongoDB for reuse. Backfill depends on successful geocoding and external service availability. The returned records can have incomplete descriptions, ratings, opening hours, or other metadata; a larger candidate list does not necessarily mean more complete or more reliable coverage.
+
+The image enrichment service attempts to resolve a reliable Wikipedia article from stored Wikipedia or Wikidata identifiers, or from a name-and-city search. It can retrieve a page thumbnail and Wikimedia Commons images [5, 13] and cache resolved content in the PlaceImages collection. Images include available source, licensing, and attribution metadata where returned by Wikimedia. If no reliable match is found or requests fail, the itinerary may remain without an enriched image; the user interface can use a neutral placeholder where provided. Image resolution is not guaranteed for every POI.
+
+The Gemini POI suggestion fallback is described in Section 5.1. If fewer than five POIs remain after normal candidate selection, recommendPOIs() can request up to eight additional Gemini suggestions. These extras are explicitly sourced as Gemini suggestions and may have no coordinates. If that fallback request fails, the service logs a warning and continues with dataset candidates. Gemini-generated POI extras are not equivalent to independently verified dataset records.
+
+4.5 DATA QUALITY, PROVENANCE, AND LIMITATIONS
+
+The application preserves source information and accepts nullable fields for many POI attributes. This accommodates incomplete open data but makes ranking and scheduling sensitive to missing or imprecise metadata. Category-derived priors, model-generated suggestions, and live provider records have different evidentiary status. OpenStreetMap opening-hours parsing covers common patterns and may omit complex conditional rules. Overture-to-OSM entity matching uses name similarity and geographic distance, and can produce both missed matches and false matches. Wikidata enrichment only applies where a usable QID is available and its public endpoint returns data. The scripts can be rerun and support skipping or reusing intermediate outputs, but reproducibility still requires recording the exact Overture release, PBF extract date, generated CSV files, import date, and database snapshot.
+
+No dataset-size or enrichment-coverage statistic is included here. Such values must be calculated from the exact source files or database snapshot used in the evaluation. The counts printed by individual pipeline runs are run-specific and should be retained as experimental metadata if reported.
+
+
+5. RECOMMENDATION AND ITINERARY METHODS
+
+5.1 CANDIDATE RETRIEVAL
+
+getCandidatePOIs() queries MongoDB using destination variants and preference terms. The query includes non-Overture records for a matching city and Overture records in selected tiers, as well as preference-related category, type, significance, characteristic, or tag matches. Duplicate database records retrieved through multiple preference queries are removed by their database identifiers.
+
+Hotel candidates are filtered by destination and may be constrained by a budget-derived per-night ceiling and accommodation preference. If an amenity constraint yields no hotels, the candidate service retries without that amenity filter. Restaurant candidates are filtered by destination and can include dietary and cuisine constraints; if a cuisine filter yields no matches, the service retries without that filter. The candidate service does not declare the earlier draft's fixed database caps of 60 POIs, 25 hotels, and 40 restaurants; those values should not be reported as active limits.
+
+5.2 POI SCORING
+
+The function scorePoi() combines four normalized components. The implementation defines:
+
+WEIGHTS = { preference: 0.25, quality: 0.55, proximity: 0.10, dataQuality: 0.10 }
+
+For a candidate p, the overall score is the weighted combination:
+
+score(p) = 0.25 * preference(p)
+         + 0.55 * quality(p)
+         + 0.10 * proximity(p)
+         + 0.10 * dataQuality(p)
+
+The preference component is the fraction of user preference terms found in candidate category, POI type, significance, characteristics, and tags. If the user has no stated preferences, the function uses a neutral score rather than penalizing the candidate.
+
+The quality component is assembled from available signals: popularity score or proxy, tier, rating, review count, confidence, source count, and the presence of identifiers or links such as Wikidata, Wikipedia, or website. The quality function normalizes using the signals actually present, which allows partial records to be scored but means that candidates with different available signals may not be directly comparable in the same way.
+
+The data-quality component counts whether coordinates, description, opening and closing times, contact information, and a category/type/cuisine field are present. It measures field completeness, not factual correctness.
+
+The proximity component is measured from the selected accommodation when coordinates are available, otherwise from destination coordinates. The score decreases linearly with distance using trip.dailyTravelToleranceKm or a default tolerance. Missing location information receives a neutral proximity value. Ranking therefore accounts for distance but does not guarantee a globally optimal route or identify every historically or culturally important attraction.
+
+The ranked POI list passed to later stages is sliced to at least the target count or the configured top-N value. The target is derived from trip length and pace. Dedupe in the recommendation module is by normalized name, so distinct places with the same normalized name could be conflated.
+
+5.3 DAILY CLUSTERING AND SEQUENCING
+
+The deterministic itinerary builder groups POIs by day using clusterPOIsByDay(). The clustering routine uses a simple k-means-style iterative assignment based on Haversine distance, deterministic longitude-based centroid initialization, and a rebalance step. POIs without coordinates are distributed across clusters rather than being discarded, but they cannot be geographically optimized.
+
+Within a daily cluster, sequenceDayPOIs() uses a greedy nearest-neighbour walk. It starts from a supplied base point when available, otherwise from a candidate coordinate, repeatedly choosing the closest remaining POI according to straight-line distance. Coordinate-less candidates are appended after coordinate-bearing candidates. This is a heuristic and does not guarantee a shortest road route.
+
+5.4 AI GENERATION AND VALIDATION
+
+Gemini is called through the server's AI service using JSON response mode. generateValidatedJson() passes a prompt to Gemini and invokes a supplied validator. If validation fails, the service can retry with the validation errors included in a corrective prompt. The itinerary validator checks the response shape, expected trip-day count, sequential day numbering, dates within the trip period, valid start times, non-overlapping activities, and whether records labeled as dataset-derived refer to supplied candidates.
+
+Accepted AI output is mapped onto the application activity model and enriched with matching database metadata. Dataset identifiers are attached when a generated activity resolves to a supplied dataset candidate. This validation reduces certain structural and unsupported-ID errors, but it does not prove that a named location exists, is currently open, is safe to visit, or is factually described correctly.
+
+5.5 DETERMINISTIC ITINERARY GENERATION
+
+When the AI itinerary response is unavailable or rejected, buildDeterministicItinerary() clusters and sequences POIs, chooses a bounded number of attractions based on travel pace, assigns default durations where needed, and adds available restaurant stops near meal periods. The default duration for an attraction without a stored duration is 90 minutes. The deterministic path relies on the candidate pool and available metadata; it is not an independent source of missing destination knowledge and should not be described as optimal.
+
+The system includes an optional v2 optimizer that can be selected through environment configuration. The standard itinerary engine defaults to the legacy Gemini path unless the relevant environment setting enables another mode. The v2 path applies scoring, clustering, sequencing, pace limits, time-fit logic, and transition scoring. In shadow mode it generates a comparison output for logging without replacing the normal itinerary. Evaluation papers should state the exact environment mode used for every tested generation.
+
+5.6 SCHEDULING AND ROUTING
+
+The itinerary route planner processes activities in sequence, considers activity duration and available opening-hour information, and inserts travel activities when route information is available. It can ask Geoapify to order stops, with local nearest-neighbour sequencing available when route planning cannot provide an order. For route legs, Geoapify road distance and time are preferred. The routeBetween() fallback estimates distance with Haversine and duration using a simple distance-based heuristic. Such values are marked as estimated and do not represent road-network distance, traffic, transit schedules, or guaranteed arrival time.
+
+Opening-hour and weekly-closure checks use available candidate fields. Missing or approximate hours limit the reliability of those checks. User-selected places are treated specially so that they can be retained with warnings or unscheduled times rather than silently removed in some scheduling conflicts.
+
+5.7 WEATHER, TRANSPORT, AND BUDGET ESTIMATES
+
+Open-Meteo is queried for supported forecast or archive date windows. Weather values are attached to itinerary dates when returned. If dates are outside supported windows, coordinates are absent, or the request fails, the service returns no weather data; the application does not fabricate a weather forecast.
+
+Gemini can generate packing guidance and transport options. When pre-trip AI generation fails, buildPreTripFallback() constructs a generic checklist and bases additional clothing advice on available weather values. When transport AI generation fails, the application supplies a selected-mode fallback with a reminder to check current schedules and fares. Transport model fields explicitly mark availability as not live. Some distances and prices are estimates; the system does not provide live booking inventory through these records.
+
+The trip budget summary estimates components such as accommodation, intercity travel, local transport, and food. Actual expenses are stored separately and are used by budget aggregation and reporting. Budget estimates and recorded expenditure are distinct measures and should not be conflated in analysis.
+
+
+6. FALLBACK AND FAILURE-HANDLING DESIGN
+
+The table below summarizes implemented behavior and its limits. A fallback is not presumed to be equivalent to the primary service.
+
+Dependency or condition: Gemini itinerary request fails or output fails validation.
+Implemented response: generateValidatedJson() retries validation failures according to its retry setting; generateItinerarySection() then invokes buildDeterministicItinerary().
+Remaining capability and limitation: A day-wise plan can still be constructed from retrieved candidates, but it lacks the same generative contextual reasoning and is constrained by candidate coverage and metadata.
+
+Dependency or condition: Candidate pool is below required POI or restaurant coverage.
+Implemented response: backfillCandidates() attempts Geoapify Places and then Overpass where counts remain low. A separate Gemini POI suggestion path runs when fewer than five POIs remain after normal selection.
+Remaining capability and limitation: Backfill requires destination geocoding and external provider access. Gemini suggestions may not have coordinates; sparse data can remain sparse when providers fail.
+
+Dependency or condition: Geoapify geocoding is unavailable or does not return an acceptable result.
+Implemented response: geocoding.service.js tries LocationIQ and may use cityFallbackCoords() for supported city names in the generation path.
+Remaining capability and limitation: The static lookup only covers known city names and supplies city-level coordinates, not verified coordinates for an individual venue.
+
+Dependency or condition: A place is missing coordinates or its coordinates do not match the destination.
+Implemented response: the generation service attempts place-level geocoding anchored to the destination. If the place cannot be verified within the destination boundary, it keeps null coordinates.
+Remaining capability and limitation: Such a candidate may remain in textual itinerary content but cannot be accurately placed or routed on a map.
+
+Dependency or condition: Geoapify route planner cannot order all mapped stops.
+Implemented response: local sequenceDayPOIs() provides a nearest-neighbour order using straight-line distance.
+Remaining capability and limitation: This order does not account for road topology, traffic, transit, access restrictions, or road distance.
+
+Dependency or condition: Geoapify routing cannot return a route leg.
+Implemented response: routeBetween() can use Haversine distance and a simple estimated duration for scheduling.
+Remaining capability and limitation: The result is an approximate straight-line-based estimate, not an actual driving distance or ETA.
+
+Dependency or condition: Weather is unavailable or the dates are outside the supported query window.
+Implemented response: no forecast is attached; pre-trip fallback advice explicitly tells users to check a forecast nearer departure.
+Remaining capability and limitation: Weather-specific itinerary advice is absent or generic.
+
+Dependency or condition: Gemini packing or transport content is unavailable or invalid.
+Implemented response: deterministic packing advice is generated; transport fallback gives selected-mode information and tells the user to verify schedules and fares.
+Remaining capability and limitation: Fallback content is generic or estimated. It is not a live transport quote or booking.
+
+Dependency or condition: Wikipedia/Wikimedia image enrichment has no reliable match or fails.
+Implemented response: cached content is reused when available; otherwise enrichment may leave the itinerary without a resolved image. UI placeholders are available in supported image views.
+Remaining capability and limitation: Not every venue has an image, and a missing image is not replaced with an unrelated random image.
+
+Dependency or condition: Cesium ion configuration is missing.
+Implemented response: the 3D view displays a configuration error.
+Remaining capability and limitation: This feature does not currently provide an alternate 3D renderer; the separate 2D map functionality remains distinct.
+
+This design makes selected external dependencies optional for some planning outcomes, but it does not make the whole system independent of external services. MongoDB, server availability, candidate data, and required configuration remain core dependencies. The failure behavior and fallback success rates should be tested using controlled fault injection before reliability claims are made.
+
+
+7. IMPLEMENTATION AND APPLICATION FEATURES
+
+7.1 TRIP MANAGEMENT
+
+Authenticated users can create and retrieve trips, update trip fields, delete trips, regenerate itineraries, and manage visibility using trip APIs. Trip records distinguish draft, generating, generated, and failed states. Trip cards and trip details use the persisted trip record rather than treating a generated plan as transient chat output.
+
+7.2 INTERACTIVE GEOGRAPHIC VIEWS
+
+Leaflet-based views display trip and Explore locations using coordinates, markers, and route-related data. The separate CesiumJS page provides a 3D geographic visualization when its configured ion resources are available. Mapillary image retrieval is an additional visual context feature where supported and configured. These visual features depend on valid coordinates and provider configuration; they do not alter the stored itinerary's source data.
+
+7.3 BUDGET AND EXPENSE MANAGEMENT
+
+The budget feature distinguishes planned budget summaries from recorded expense entries. Expense records use integer paise amounts, a category, date, payer, payment method, split information, and an optional receipt reference. Aggregation and reporting support trip totals and category/person/day views. Receipt uploads are stored through the server's upload and storage paths and can be included in applicable budget report output. Generated budget components and transport prices should be presented as estimates where the data model marks them as non-live.
+
+7.4 GROUP TRIPS AND COLLABORATION
+
+Trip records include group-trip fields, invitation state, member roles, and acceptance status. The application also has expense-splitting support for trip members. These features support shared planning and expense tracking, but the paper should avoid implying real-time collaborative editing unless synchronization behavior has been separately verified.
+
+7.5 PROFILE AND TRAVEL JOURNAL
+
+The profile feature stores owner-specific information and travel preferences, and the preferences can be used to prefill trip creation. A travel journal allows the owner to store place-related notes and photos with optional trip association. Journal entries and photos are served through authenticated owner-scoped operations. Recent activity records structured events for selected actions and use retention-oriented model configuration. These features extend the application beyond itinerary generation; they are supporting product capabilities rather than the principal algorithmic contribution of this paper.
+
+7.6 AUTHENTICATION AND PRIVACY
+
+The server authenticates API requests using JWTs. Passwords are stored as bcryptjs hashes, and validation middleware checks relevant request payloads. OTP state is currently in-memory and uses a fixed development code, so it is not production-grade phone verification. Sensitive profile data and private journal/activity operations are intended to be restricted to their owner. Public trip visibility is managed at trip level rather than through a global public profile. Deployment security still depends on correct environment configuration, transport security, secret management, and provider restrictions.
+
+
+8. EVALUATION METHODOLOGY
+
+The following evaluation design is proposed to answer RQ1-RQ3. It must be executed on a recorded version of the application and dataset before numerical results are added.
+
+8.1 RECOMMENDATION RELEVANCE
+
+Construct a destination-spanning test set containing trip preference inputs and candidate POIs. Ask multiple evaluators with destination knowledge to independently label whether each recommended POI is relevant and whether locally prominent attractions are missing. Record the annotation protocol, number of destinations, number of trip profiles, evaluator agreement, and candidate data snapshot. Report ranking metrics such as Precision@k, Recall@k, nDCG@k, and coverage, with explicit definitions and confidence intervals where sample size permits. Compare the current ranker with a popularity-only baseline and a preference-only baseline. Do not infer real-world importance solely from model confidence or Wikipedia sitelink count.
+
+8.2 ITINERARY VALIDITY AND GEOGRAPHIC QUALITY
+
+For each test trip, verify that the itinerary has the expected dates and day count, no unintended overlaps, plausible activity durations, and candidate references that resolve to known records. For geographic quality, compare route distance and duration estimates with provider routes or an independently selected route baseline for trips with coordinates. Report missing-coordinate rates separately. Compare accumulated route distance and travel time against simple alternative orders; do not describe straight-line distance as road distance.
+
+8.3 FALLBACK TESTING
+
+Use dependency injection, mocked provider responses, or controlled network failures to test Gemini failure, invalid JSON, invalid itinerary fields, Geoapify geocoding failure, LocationIQ failure, missing city lookup, route planner failure, route leg failure, Open-Meteo unavailability, and image lookup failure. For each scenario, record whether the expected fallback activated, whether the trip reached a valid stored state, which fields became estimates or null, and whether the UI communicated the limitation. Test cases should distinguish a successful fallback from a graceful but incomplete result.
+
+8.4 PERFORMANCE AND REPRODUCIBILITY
+
+Measure end-to-end generation latency and per-provider request latency only in a documented environment. Record hardware, software versions, model configuration, API tier, network conditions, database snapshot, and test date. Avoid reporting a single response time without the number of observations and distribution. Store exact input requests, relevant provider responses where licensing permits, and generated output versions to support reproducibility.
+
+8.5 HUMAN EVALUATION
+
+A user study could assess itinerary usefulness, perceived relevance, readability, and trust in estimates. The study should describe participant recruitment, consent, tasks, survey instruments, and limitations. Until such a study is performed, usability should not be claimed from screenshots alone.
+
+
+9. RESULTS
+
+The current evidence supports an implementation description: the repository contains modules for database-backed candidate retrieval and ranking, validated Gemini generation, deterministic itinerary construction, geographic processing, budget and expense tracking, mapping, and the listed fallback paths. The software also includes automated tests in areas such as profile summary and validation, travel preferences, journal privacy, activity records, itinerary behavior, POI recommendation, trip behavior, expenses, receipts, and image enrichment.
+
+No controlled POI relevance study, destination coverage audit, baseline comparison, end-to-end timing study, or systematic provider fault-injection results are reported in this paper. Therefore, no accuracy, effectiveness, service availability, response-time, user-satisfaction, or percentage-improvement result is claimed. Automated unit tests can establish behavior for tested cases but do not demonstrate that real-world attraction ranking is complete or that fallback output is practically equivalent to provider output.
+
+Screenshots from the original manuscript may be included here to document application workflows, provided that they correspond to the submitted application version and contain no fabricated or anonymized results presented as real user data. Each figure should have a numbered caption and should be discussed in the text. Interface screenshots should be labeled as implementation evidence, not performance results.
+
+
+10. DISCUSSION AND NOVELTY ANALYSIS
+
+The main design characteristic of Travel Manager is the division of work between data-backed application logic and AI generation. Candidate retrieval and ranking occur before itinerary generation; generated JSON is validated against application-level rules; accepted activities are mapped to stored candidates; and geographic scheduling can apply route services or local alternatives. This design is more constrained than a chatbot that returns a free-form itinerary, because the output is represented in the application's trip schema and passed through validation and scheduling.
+
+A second characteristic is that fallback behavior is explicit in multiple pipeline stages. Deterministic itinerary construction, static city coordinates for supported destinations, local nearest-neighbour sequencing, straight-line distance estimation, and generic packing guidance allow selected functions to continue when primary services do not return usable results. The fallbacks are heterogeneous: some preserve an output with lower precision, while others leave a feature unavailable. The system therefore illustrates graceful degradation in selected planning tasks, not complete service independence.
+
+The weighted POI scorer is inspectable because its top-level weights and component functions are explicit. However, explicit weights do not establish that the score is well calibrated or that it reflects traveler judgments. In particular, the observed omission of important attractions indicates that candidate coverage and data quality are potential bottlenecks in addition to the scoring function. A candidate cannot be ranked if it is missing from the retrieved pool, and a proxy popularity signal cannot substitute for a destination-specific ground-truth importance label.
+
+The defensible contribution at this stage is an implemented full-stack integration and a set of concrete fallback paths. Whether the combination is novel relative to published travel-planning systems remains to be established by a systematic related-work review. Whether it is effective remains to be established by the evaluation in Section 8. The current paper must therefore frame novelty as a research question or applied-system contribution rather than a proven superiority claim.
+
+
+11. LIMITATIONS AND THREATS TO VALIDITY
+
+11.1 DATA COVERAGE AND QUALITY
+
+POI coverage and attribute completeness can vary by city, category, and data source. Overture tiers, confidence, source counts, ratings, and Wikipedia sitelinks are imperfect indicators of cultural or tourist importance. Category priors introduce assumptions when records lack actual durations, fees, or opening hours. OSM opening-hours parsing handles common forms but not the complete standard. Enrichment matching can produce false positives or miss correct matches.
+
+11.2 RECOMMENDATION BIAS
+
+The POI ranker uses manually configured weights and text matching. The paper does not report user-derived weights, a learned ranking model, or an independently labeled POI relevance dataset. Preference keywords may not capture nuanced interests or synonyms. Proximity can favor nearby candidates over more important distant sites, and high-quality metadata may reflect data visibility rather than visitor value. Name-based deduplication can also merge distinct candidates with identical normalized names.
+
+11.3 AI OUTPUT AND MODEL DEPENDENCE
+
+Gemini model behavior, availability, response format, and latency can change with service configuration. Validation catches selected structural and consistency errors, not every factual error. Deterministic output remains dependent on the candidate pool and may be less descriptive than a valid AI itinerary. No hallucination rate or comparative model study is reported.
+
+11.4 GEOGRAPHIC AND TEMPORAL ACCURACY
+
+Static city coordinates are city-level fallbacks and cannot accurately locate every POI. Haversine distance is straight-line distance and does not represent a road route. Route and time estimates may omit traffic, transit service, access restrictions, closures, or local conditions. Opening hours and weather can be missing, outdated, or approximate.
+
+11.5 EVALUATION LIMITATIONS
+
+The paper currently lacks measured recommendation metrics, a user study, route-quality comparisons, and systematic service failure experiments. Consequently, conclusions are limited to system design and implemented behavior. Results may also vary across dataset snapshots, model versions, API tiers, and cities.
+
+11.6 DEPLOYMENT AND SECURITY LIMITATIONS
+
+The fixed, in-memory OTP implementation is for development and is not suitable as production authentication. External API availability, keys, rate limits, browser configuration, database setup, and storage configuration affect deployment. The 3D view does not have a substitute renderer when Cesium ion configuration is missing. These constraints must be resolved or explicitly disclosed in any deployment evaluation.
+
+
+12. CONCLUSION AND FUTURE WORK
+
+This paper described Travel Manager, a full-stack application that combines structured travel candidates, weighted POI ranking, AI-generated and validated trip content, geographic scheduling, and trip-management features. Its POI ranker combines preference match, quality, proximity, and data completeness. Its itinerary pipeline validates structured Gemini output and can construct a deterministic alternative. Geographic processing uses provider-backed services where available and lower-detail local methods for selected failure cases.
+
+The application also supports trip maps, budget estimates, recorded expenses, receipts, group trip functions, profile preferences, a travel journal, and a separate 3D POI view. These features situate itinerary generation within a broader trip-management workflow. The implementation includes several fallbacks, but fallback output can be less precise or incomplete, and some features remain unavailable when their provider configuration is absent.
+
+This work does not yet establish measured recommendation quality, route improvement, user satisfaction, or quantitative resilience. Future work should build a representative, human-labeled destination benchmark; compare the current POI ranker against simple baselines; test attraction coverage across cities; evaluate schedule and route quality; and inject provider failures to measure fallback activation and output completeness. Further work should also assess the effect of missing metadata, model changes, and city-level coverage on the quality of generated trips. Claims of research novelty should be refined after a systematic review and these experiments.
+
+
+REFERENCES
+
+[1] G. Adomavicius and A. Tuzhilin, "Toward the Next Generation of Recommender Systems: A Survey of the State-of-the-Art and Possible Extensions," IEEE Transactions on Knowledge and Data Engineering, vol. 17, no. 6, pp. 734-749, 2005, doi: 10.1109/TKDE.2005.99.
+
+[2] G. B. Dantzig, D. R. Fulkerson, and S. M. Johnson, "Solution of a Large-Scale Traveling-Salesman Problem," Operations Research, vol. 2, no. 4, pp. 393-410, 1954, doi: 10.1287/opre.2.4.393.
+
+[3] Overture Maps Foundation, "Overture Maps Documentation." Available: https://docs.overturemaps.org/. Accessed: 14 October 2026.
+
+[4] OpenStreetMap contributors, "OpenStreetMap Wiki: Map Features and Data." Available: https://wiki.openstreetmap.org/. Accessed: 14 October 2026.
+
+[5] Wikidata contributors, "Wikidata Query Service User Manual." Available: https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service. Accessed: 14 October 2026.
+
+[6] Google, "Gemini API Documentation." Available: https://ai.google.dev/gemini-api/docs. Accessed: 14 October 2026.
+
+[7] Geoapify, "Geoapify Location Platform Documentation." Available: https://www.geoapify.com/. Accessed: 14 October 2026.
+
+[8] Open-Meteo, "Weather Forecast API Documentation." Available: https://open-meteo.com/en/docs. Accessed: 14 October 2026.
+
+[9] MongoDB, Inc., "MongoDB Manual." Available: https://www.mongodb.com/docs/manual/. Accessed: 14 October 2026.
+
+[10] H. Butler, M. Daly, A. Doyle, S. Gillies, S. Hagen, and T. Schaub, "The GeoJSON Format," RFC 7946, August 2016. Available: https://www.rfc-editor.org/rfc/rfc7946.
+
+[11] Leaflet contributors, "Leaflet Documentation." Available: https://leafletjs.com/reference.html. Accessed: 14 October 2026.
+
+[12] Cesium, "CesiumJS Documentation." Available: https://cesium.com/learn/cesiumjs/ref-doc/. Accessed: 14 October 2026.
+
+[13] Wikimedia Foundation, "MediaWiki Action API Documentation." Available: https://www.mediawiki.org/wiki/API:Main_page. Accessed: 14 October 2026.
+
+
+AUTHOR'S FINALIZATION CHECKLIST
+
+1. Confirm author names, affiliations, title, and the target publication format.
+2. Replace the generic reference formatting with the required IEEE or other venue style.
+3. Verify all cited works and add appropriate in-text citations where each source informs the discussion.
+4. Remove any product capabilities that are not present in the exact code version being submitted.
+5. Record exact dataset release, import date, database snapshot, Gemini model configuration, and provider settings used in evaluation.
+6. Execute the evaluation plan and replace the Results section's current evidence limitation with measured findings; do not insert estimated or invented metrics.
+7. Ensure each screenshot is from the real application and is numbered, captioned, and referenced in the text.
+8. Recheck the paper after experiments, because measured results may require revisions to the abstract, discussion, and conclusion.

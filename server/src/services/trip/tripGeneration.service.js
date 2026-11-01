@@ -45,7 +45,10 @@ const INTERCITY_MODES = ['flight', 'train', 'bus', 'car'];
  * output per spec section 47, so the trip always ends up `generated` unless
  * something in the core pipeline (DB, validation) itself is broken.
  */
-async function generateTrip(tripId, userId) {
+async function generateTrip(tripId, userId, {
+  geocodeAddressFn = geocodeAddress,
+  recommendHotelsFn = recommendHotels,
+} = {}) {
   const trip = await Trip.findById(tripId);
   if (!trip) throw ApiError.notFound('Trip not found.');
   if (String(trip.userId) !== String(userId)) throw ApiError.forbidden('You do not have access to this trip.');
@@ -55,7 +58,7 @@ async function generateTrip(tripId, userId) {
 
   try {
     // 0. Geocode the destination (Geoapify first, then LocationIQ).
-    const destinationCoords = await geocodeAddress(`${trip.destination}, India`)
+    const destinationCoords = await geocodeAddressFn(`${trip.destination}, India`)
       || cityFallbackCoords(trip.destination);
     if (destinationCoords) {
       trip.destinationLocation = { lat: destinationCoords.lat, lng: destinationCoords.lng };
@@ -63,7 +66,7 @@ async function generateTrip(tripId, userId) {
 
     // 2-4. Candidate retrieval: POIs, hotels, restaurants (dataset-filtered + ranked, capped sets only).
     const snapshot = trip.discoveredCandidates || null;
-    const rawHotels = snapshot?.stays?.length ? snapshot.stays : await recommendHotels(trip);
+    const rawHotels = snapshot?.stays?.length ? snapshot.stays : await recommendHotelsFn(trip);
     const selectedHotel = rawHotels.find((hotel) => String(hotel.id) === String(trip.selectedHotelId)) || rawHotels[0];
     const accommodationPoint = selectedHotel?.latitude != null
       ? { lat: selectedHotel.latitude, lng: selectedHotel.longitude }
@@ -360,7 +363,11 @@ function estimateIntercityPrice(trip, mode) {
   return Math.max(mode === 'flight' ? 1500 : 450, Math.round(budget * (rates[mode] || rates.train)));
 }
 
-async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
+async function generateItinerarySection(trip, { pois, hotels, restaurants }, {
+  generateValidatedJsonFn = generateValidatedJson,
+  geocodeMissingActivityCoordsFn = geocodeMissingActivityCoords,
+  planItineraryRoutesFn = planItineraryRoutes,
+} = {}) {
   const engineMode = (process.env.VALIDATION_ENGINE || process.env.ITINERARY_ENGINE || 'legacy').toLowerCase();
 
   if (engineMode === 'v2') {
@@ -369,8 +376,8 @@ async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
       if (optimizedDays?.length) {
         logger.info(`Using v2 itinerary optimizer for trip ${trip._id}`);
         const completeDays = ensureSelectedPlacesIncluded(optimizedDays, trip, pois);
-        await geocodeMissingActivityCoords(completeDays, trip.destination, trip.destinationLocation);
-        return planItineraryRoutes(completeDays, { accommodation: accommodationPoint(trip), reorder: true });
+        await geocodeMissingActivityCoordsFn(completeDays, trip.destination, trip.destinationLocation);
+        return planItineraryRoutesFn(completeDays, { accommodation: accommodationPoint(trip), reorder: true });
       }
     } catch (err) {
       logger.warn(`v2 itinerary optimizer failed for trip ${trip._id}; falling back to legacy`, err.message);
@@ -399,15 +406,15 @@ async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
     weatherContext: trip.preTrip?.weatherAdvice || null,
   });
 
-  const result = await generateValidatedJson(prompt, (json) => validateItinerary(json, { trip, candidateIds }), { maxRetries: 1 });
+  const result = await generateValidatedJsonFn(prompt, (json) => validateItinerary(json, { trip, candidateIds }), { maxRetries: 1 });
 
   if (result.ok) {
     const days = await mapGeminiItineraryToTripDays(result.data, {
       pois, hotels, restaurants, destination: trip.destination, destinationCoords: trip.destinationLocation,
     });
     const completeDays = ensureSelectedPlacesIncluded(dedupeItineraryDays(days), trip, pois);
-    await geocodeMissingActivityCoords(completeDays, trip.destination, trip.destinationLocation);
-    return planItineraryRoutes(completeDays, { accommodation: accommodationPoint(trip), reorder: true });
+    await geocodeMissingActivityCoordsFn(completeDays, trip.destination, trip.destinationLocation);
+    return planItineraryRoutesFn(completeDays, { accommodation: accommodationPoint(trip), reorder: true });
   }
 
   logger.warn(`Itinerary AI generation failed for trip ${trip._id}, using deterministic fallback`, result.errors);
@@ -416,8 +423,8 @@ async function generateItinerarySection(trip, { pois, hotels, restaurants }) {
     trip,
     pois
   );
-  await geocodeMissingActivityCoords(deterministicDays, trip.destination, trip.destinationLocation);
-  return planItineraryRoutes(deterministicDays, { accommodation: accommodationPoint(trip), reorder: true });
+  await geocodeMissingActivityCoordsFn(deterministicDays, trip.destination, trip.destinationLocation);
+  return planItineraryRoutesFn(deterministicDays, { accommodation: accommodationPoint(trip), reorder: true });
 }
 
 function ensureSelectedPlacesIncluded(days, trip, pois) {
@@ -899,6 +906,7 @@ function minutesToTime(mins) {
 
 module.exports = {
   generateTrip,
+  generateItinerarySection,
   buildTripOverview,
   buildBudgetSummary,
   anchorDaysToAccommodation,

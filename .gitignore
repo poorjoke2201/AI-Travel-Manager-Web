@@ -12,3 +12,4 @@ server/node_modules/
 /server/uploads/receipts/
 /server/uploads/avatars/
 /server/uploads/journal/
+data/*.osm.bz2
